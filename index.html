@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FaceSwap Studio</title>
+<script src="https://cdn.tailwindcss.com/3.4.1"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Space Grotesk', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+<style>
+  :root {
+    --brand: #6c47ff;
+    --brand2: #ec4899;
+    --bg: #08080f;
+    --surface: #0f0f1a;
+    --surface2: #161625;
+    --surface3: #1e1e30;
+    --border: #26263b;
+    --border2: #32324a;
+    --text: #e2e2f0;
+    --muted: #6b6b8a;
+    --green: #4ade80;
+    --red: #f87171;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Ambient glows */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 15% 10%, rgba(108,71,255,0.07) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 35% at 85% 85%, rgba(236,72,153,0.05) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .z1 { position: relative; z-index: 1; }
+
+  /* Gradient text */
+  .grad-text {
+    background: linear-gradient(135deg, #a99bff 0%, #f472b6 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  .card:hover { border-color: rgba(108,71,255,0.45); box-shadow: 0 0 0 1px rgba(108,71,255,0.12), 0 8px 32px rgba(0,0,0,0.35); }
+
+  /* Inputs & selects */
+  .inp {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.875rem;
+    padding: 0.6rem 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .inp:focus { border-color: var(--brand); }
+  .inp::placeholder { color: var(--muted); }
+  .inp.mono { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+
+  select.inp { cursor: pointer; }
+
+  /* Drop zone */
+  .drop-zone {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 220px; cursor: pointer;
+    transition: background 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .drop-zone:hover { background: rgba(108,71,255,0.04); }
+  .drop-zone.dragover { background: rgba(108,71,255,0.1); border-color: var(--brand) !important; }
+
+  .preview-img { width: 100%; min-height: 220px; object-fit: cover; display: none; }
+  .remove-btn {
+    display: none; position: absolute; top: 8px; right: 8px;
+    background: rgba(0,0,0,0.75); border: none; color: #fff;
+    border-radius: 50%; width: 28px; height: 28px;
+    align-items: center; justify-content: center; cursor: pointer;
+    font-size: 0.85rem; transition: background 0.2s; z-index: 5;
+  }
+  .remove-btn:hover { background: rgba(248,113,113,0.85); }
+
+  /* Run button */
+  .run-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand2) 100%);
+    border: none; border-radius: 14px; color: #fff;
+    font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700;
+    letter-spacing: 0.03em; padding: 1rem;
+    display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+    cursor: pointer; box-shadow: 0 4px 24px rgba(108,71,255,0.25);
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  }
+  .run-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(108,71,255,0.4); }
+  .run-btn:active:not(:disabled) { transform: translateY(0); }
+  .run-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Spinner */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Progress bar */
+  .progress-track { background: var(--border2); border-radius: 4px; height: 5px; overflow: hidden; }
+  .progress-bar {
+    height: 100%; border-radius: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--brand) 0%, var(--brand2) 50%, var(--brand) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    transition: width 0.4s ease;
+  }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+  /* Log */
+  .log-area {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--muted);
+    line-height: 1.8; max-height: 110px;
+    overflow-y: auto;
+  }
+  .log-area::-webkit-scrollbar { width: 3px; }
+  .log-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .log-time { color: var(--brand); opacity: 0.6; margin-right: 0.6rem; }
+
+  /* Status dot */
+  @keyframes dotPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); }
+    50% { box-shadow: 0 0 0 5px rgba(74,222,128,0); }
+  }
+  .dot-ok { animation: dotPulse 2s ease-in-out infinite; }
+
+  /* Range */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    height: 4px; border-radius: 2px;
+    background: var(--border2); outline: none; cursor: pointer; width: 100%;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand), var(--brand2));
+    box-shadow: 0 0 8px rgba(108,71,255,0.5); cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%; border: none;
+    background: linear-gradient(135deg, var(--brand), var(--brand2));
+  }
+
+  /* Result img */
+  .res-img { width: 100%; max-height: 380px; object-fit: contain; display: block; background: var(--bg); }
+
+  /* Download btn */
+  .dl-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 10px; color: var(--text); font-family: inherit;
+    font-size: 0.8rem; font-weight: 600; padding: 0.45rem 0.9rem;
+    cursor: pointer; text-decoration: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .dl-btn:hover { border-color: var(--brand); background: rgba(108,71,255,0.1); }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 1.5rem; right: 1rem;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 14px; padding: 0.8rem 1.2rem;
+    font-size: 0.875rem; display: none; align-items: center; gap: 0.6rem;
+    z-index: 999; max-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: slideUp 0.3s ease;
+  }
+  .toast.show { display: flex; }
+  .toast.error { border-color: rgba(248,113,113,0.4); }
+  .toast.success { border-color: rgba(74,222,128,0.4); }
+  @keyframes slideUp { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+  input[type="file"] { display: none; }
+
+  /* Tag badges */
+  .badge-brand { background: rgba(108,71,255,0.15); color: #a99bff; border-radius: 5px; padding: 2px 8px; font-size: 0.68rem; font-family: 'JetBrains Mono', monospace; }
+  .badge-pink  { background: rgba(236,72,153,0.15); color: #f9a8d4; border-radius: 5px; padding: 2px 8px; font-size: 0.68rem; font-family: 'JetBrains Mono', monospace; }
+
+  /* Divider line */
+  .divider { border: none; border-top: 1px solid var(--border2); }
+
+  /* Responsive grid */
+  @media (min-width: 768px) {
+    .swap-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.25rem; align-items: start; }
+    .arrow-wrap { padding-top: 3.5rem; flex-direction: column; }
+  }
+  @media (max-width: 767px) {
+    .swap-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+    .arrow-wrap { flex-direction: row; padding: 0.5rem 0; }
+    .settings-grid { grid-template-columns: 1fr 1fr !important; }
+    .result-grid { grid-template-columns: 1fr !important; }
+  }
+  @media (max-width: 480px) {
+    .settings-grid { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+<div class="z1" style="max-width:1020px;margin:0 auto;padding:1.5rem 1rem 5rem;">
+
+  <!-- FILE:// WARNING -->
+  <div id="fileWarning" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.35);border-radius:12px;padding:0.9rem 1.1rem;margin-bottom:1.25rem;font-size:0.82rem;line-height:1.65;color:#fca5a5;">
+    ⚠️ <strong>Local file detected:</strong> Browsers block API requests when opening HTML files directly (<code style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:4px;">file://</code>). To use this tool, serve it via a local server:<br/>
+    <code style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#f9a8d4;">python -m http.server 8080</code> &nbsp;then open <code style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#f9a8d4;">http://localhost:8080</code>
+  </div>
+
+  <!-- HEADER -->
+  <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border2);">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <div style="width:38px;height:38px;background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;box-shadow:0 4px 16px rgba(108,71,255,0.3);">🎭</div>
+      <div>
+        <div style="font-size:1.15rem;font-weight:700;letter-spacing:-0.02em;line-height:1.1;">Face<span class="grad-text">Swap</span> Studio</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:2px;">AI-Powered Face Replacement</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.5rem;background:var(--surface2);border:1px solid var(--border2);border-radius:999px;padding:0.4rem 0.9rem;">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--muted);transition:all 0.3s;" id="statusDot"></div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--muted);" id="statusText">No API Key</span>
+    </div>
+  </header>
+
+  <!-- API KEY -->
+  <div class="card" style="padding:1.4rem;margin-bottom:1.25rem;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.75rem;">API Provider &amp; Key</div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.65rem;align-items:center;">
+      <select class="inp" id="providerSelect" onchange="updateProviderInfo()" style="min-width:200px;flex-shrink:0;">
+        <option value="falai">🆓 fal.ai (Free $10 credits)</option>
+        <option value="replicate">Replicate (Free $5 credits)</option>
+        <option value="segmind">⭐ Segmind</option>
+        <option value="faceswapper">FaceSwapper.ai</option>
+
+
+        <option value="rapidapi">RapidAPI (FaceSwap)</option>
+      </select>
+      <input class="inp mono" type="password" id="apiKeyInput" placeholder="Paste your API key here..."
+             oninput="validateKey()" value="62a7e203-4a55-407b-8640-fccf298f366f:db0429c963bff4c736c2a9b5681474bb" style="flex:1;min-width:180px;" />
+    </div>
+    <div id="providerInfo" style="margin-top:0.9rem;padding:0.75rem 1rem;background:var(--surface2);border-radius:10px;border-left:2px solid var(--brand);font-size:0.78rem;color:var(--muted);line-height:1.65;"></div>
+  </div>
+
+  <!-- UPLOAD AREA -->
+  <div class="swap-grid" style="margin-bottom:1.25rem;">
+
+    <!-- Source -->
+    <div class="card" style="overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;border-bottom:1px solid var(--border2);">
+        <span style="font-size:0.82rem;font-weight:700;letter-spacing:0.05em;">SOURCE FACE</span>
+        <span class="badge-brand">your face</span>
+      </div>
+      <div class="drop-zone" id="sourceZone" onclick="triggerUpload('sourceFile')"
+           ondragover="onDragOver(event,'sourceZone')" ondragleave="onDragLeave('sourceZone')" ondrop="onDrop(event,'source')">
+        <img class="preview-img" id="sourcePreview" />
+        <button class="remove-btn" id="sourceRemove" onclick="removeImage(event,'source')">✕</button>
+        <div id="sourceIcon" style="font-size:2.5rem;opacity:0.3;margin-bottom:0.7rem;">👤</div>
+        <div id="sourceText" style="font-size:0.83rem;color:var(--muted);text-align:center;line-height:1.7;">Drop photo here<br/>or click to browse</div>
+        <div id="sourceHint" style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:0.4rem;opacity:0.6;">JPG · PNG · WEBP</div>
+      </div>
+      <input type="file" id="sourceFile" accept="image/*" onchange="handleFile(event,'source')" />
+    </div>
+
+    <!-- Arrow -->
+    <div class="arrow-wrap" style="display:flex;align-items:center;justify-content:center;gap:0.4rem;">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand2));display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 0 20px rgba(108,71,255,0.3);">→</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--muted);letter-spacing:0.1em;">SWAP</div>
+    </div>
+
+    <!-- Target -->
+    <div class="card" style="overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;border-bottom:1px solid var(--border2);">
+        <span style="font-size:0.82rem;font-weight:700;letter-spacing:0.05em;">TARGET IMAGE</span>
+        <span class="badge-pink">destination</span>
+      </div>
+      <div class="drop-zone" id="targetZone" onclick="triggerUpload('targetFile')"
+           ondragover="onDragOver(event,'targetZone')" ondragleave="onDragLeave('targetZone')" ondrop="onDrop(event,'target')">
+        <img class="preview-img" id="targetPreview" />
+        <button class="remove-btn" id="targetRemove" onclick="removeImage(event,'target')">✕</button>
+        <div id="targetIcon" style="font-size:2.5rem;opacity:0.3;margin-bottom:0.7rem;">🖼️</div>
+        <div id="targetText" style="font-size:0.83rem;color:var(--muted);text-align:center;line-height:1.7;">Drop target image<br/>or click to browse</div>
+        <div id="targetHint" style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:0.4rem;opacity:0.6;">JPG · PNG · WEBP</div>
+      </div>
+      <input type="file" id="targetFile" accept="image/*" onchange="handleFile(event,'target')" />
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="card" style="padding:1.4rem;margin-bottom:1.25rem;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:1rem;">Settings</div>
+    <div class="settings-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.1rem;">
+      <div>
+        <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;">Face Restore</label>
+        <select class="inp" id="faceRestore" style="width:100%;">
+          <option value="true">✅ Enabled (Recommended)</option>
+          <option value="false">Disabled</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;">Output Quality</label>
+        <select class="inp" id="outputQuality" style="width:100%;">
+          <option value="high">⚡ High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low (Fast)</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.6rem;">
+          Blend Strength
+          <span class="grad-text" style="font-size:0.8rem;font-weight:700;" id="blendVal">85%</span>
+        </label>
+        <input type="range" min="0" max="100" value="85" id="blendRange"
+               oninput="document.getElementById('blendVal').textContent=this.value+'%'" />
+      </div>
+    </div>
+  </div>
+
+  <!-- RUN BUTTON -->
+  <button class="run-btn" id="runBtn" onclick="runSwap()" disabled style="margin-bottom:1.25rem;">
+    <div class="spinner" id="spinner"></div>
+    <span id="runLabel">🚀 Run Face Swap</span>
+  </button>
+
+  <!-- PROGRESS -->
+  <div class="card" id="progressSection" style="display:none;padding:1.4rem;margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;">Processing</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#a99bff;" id="progressPct">0%</div>
+    </div>
+    <div class="progress-track" style="margin-bottom:1rem;">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="log-area" id="logArea"></div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card" id="resultSection" style="display:none;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border2);">
+      <div style="font-weight:700;font-size:0.88rem;display:flex;align-items:center;gap:0.5rem;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);"></span>
+        Result Ready
+      </div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <a class="dl-btn" id="downloadBtn" href="#" download="faceswap_result.jpg">⬇ Download</a>
+        <button class="dl-btn" onclick="resetAll()">↺ New Swap</button>
+      </div>
+    </div>
+    <div class="result-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border2);">
+      <div style="position:relative;background:var(--bg);">
+        <div style="position:absolute;top:8px;left:8px;font-family:'JetBrains Mono',monospace;font-size:0.62rem;background:rgba(0,0,0,0.65);color:var(--muted);padding:2px 8px;border-radius:5px;z-index:2;">ORIGINAL</div>
+        <img id="resultOriginal" class="res-img" />
+      </div>
+      <div style="position:relative;background:var(--bg);">
+        <div style="position:absolute;top:8px;left:8px;font-family:'JetBrains Mono',monospace;font-size:0.62rem;background:rgba(0,0,0,0.65);color:#a99bff;padding:2px 8px;border-radius:5px;z-index:2;">SWAPPED ✨</div>
+        <img id="resultSwapped" class="res-img" />
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+const state = { source: null, target: null, apiKey: '', provider: 'falai' };
+
+// ── Providers ─────────────────────────────────────────────
+const providers = {
+  falai: {
+    info: `<b style="color:#e2e2f0;">fal.ai 🆓 FREE $10 credits on signup!</b> — Sign up at <a href="https://fal.ai/dashboard/keys" target="_blank" style="color:#a99bff;">fal.ai/dashboard/keys</a>, no credit card needed. Copy your API key and paste it here.`,
+    endpoint: 'https://fal.run/fal-ai/face-swap'
+  },
+  replicate: {
+    info: `<b style="color:#e2e2f0;">Replicate</b> — Get your key at <a href="https://replicate.com/account/api-tokens" target="_blank" style="color:#a99bff;">replicate.com</a>. Free $5 credits on signup. Uses <code style="color:#f9a8d4;font-size:0.72rem;">codeplugtech/face-swap</code>.`,
+    endpoint: 'https://api.replicate.com/v1/predictions'
+  },
+  segmind: {
+    info: `<b style="color:#e2e2f0;">Segmind</b> — Get your key at <a href="https://www.segmind.com/models/faceswap" target="_blank" style="color:#a99bff;">segmind.com</a>. Endpoint: <code style="color:#f9a8d4;font-size:0.72rem;">POST https://api.segmind.com/v1/faceswap</code>`,
+    endpoint: 'https://api.segmind.com/v1/faceswap'
+  },
+  faceswapper: {
+    info: `<b style="color:#e2e2f0;">FaceSwapper.ai API</b> — Get your key at <a href="https://faceswapper.ai/api" target="_blank" style="color:#a99bff;">faceswapper.ai/api</a>. Free tier available. Endpoint: <code style="color:#f9a8d4;font-size:0.72rem;">POST https://api.faceswapper.ai/v1/swap</code>`,
+    endpoint: 'https://api.faceswapper.ai/v1/swap'
+  },
+  rapidapi: {
+    info: `<b style="color:#e2e2f0;">RapidAPI – AI Face Swap</b> — Subscribe at <a href="https://rapidapi.com/search/face+swap" target="_blank" style="color:#a99bff;">rapidapi.com</a>. Search "Face Swap" and subscribe. Free plan available.`,
+    endpoint: 'https://ai-face-swap.p.rapidapi.com/faceswap'
+  }
+};
+
+function updateProviderInfo() {
+  const p = document.getElementById('providerSelect').value;
+  state.provider = p;
+  document.getElementById('providerInfo').innerHTML = providers[p].info;
+  validateKey();
+}
+
+// ── Validate Key ──────────────────────────────────────────
+function validateKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  state.apiKey = key;
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  if (key.length > 10) {
+    dot.style.background = '#4ade80';
+    dot.className = 'dot-ok';
+    txt.textContent = 'API Key Set';
+    txt.style.color = '#4ade80';
+  } else {
+    dot.style.background = '#6b6b8a';
+    dot.className = '';
+    txt.textContent = 'No API Key';
+    txt.style.color = '#6b6b8a';
+  }
+  checkReady();
+}
+
+function checkReady() {
+  const ready = state.source && state.target && state.apiKey.length > 10;
+  document.getElementById('runBtn').disabled = !ready;
+}
+
+// ── Upload ────────────────────────────────────────────────
+function triggerUpload(id) { document.getElementById(id).click(); }
+
+function handleFile(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+  loadImage(file, type);
+}
+
+function loadImage(file, type) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    state[type] = e.target.result;
+    showPreview(type, e.target.result);
+    checkReady();
+  };
+  reader.readAsDataURL(file);
+}
+
+function showPreview(type, src) {
+  const preview  = document.getElementById(type + 'Preview');
+  const icon     = document.getElementById(type + 'Icon');
+  const text     = document.getElementById(type + 'Text');
+  const hint     = document.getElementById(type + 'Hint');
+  const removeBtn = document.getElementById(type + 'Remove');
+  preview.src = src;
+  preview.style.display = 'block';
+  icon.style.display = 'none';
+  text.style.display = 'none';
+  hint.style.display = 'none';
+  removeBtn.style.display = 'flex';
+}
+
+function removeImage(event, type) {
+  event.stopPropagation();
+  state[type] = null;
+  const preview  = document.getElementById(type + 'Preview');
+  const icon     = document.getElementById(type + 'Icon');
+  const text     = document.getElementById(type + 'Text');
+  const hint     = document.getElementById(type + 'Hint');
+  const removeBtn = document.getElementById(type + 'Remove');
+  preview.src = ''; preview.style.display = 'none';
+  icon.style.display  = 'block';
+  text.style.display  = 'block';
+  hint.style.display  = 'block';
+  removeBtn.style.display = 'none';
+  document.getElementById(type + 'File').value = '';
+  checkReady();
+}
+
+// ── Drag & Drop ───────────────────────────────────────────
+function onDragOver(e, zoneId) { e.preventDefault(); document.getElementById(zoneId).classList.add('dragover'); }
+function onDragLeave(zoneId) { document.getElementById(zoneId).classList.remove('dragover'); }
+function onDrop(e, type) {
+  e.preventDefault();
+  document.getElementById(type+'Zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadImage(file, type);
+}
+
+// ── Logging ───────────────────────────────────────────────
+function log(msg) {
+  const area = document.getElementById('logArea');
+  const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+  area.innerHTML += `<div><span class="log-time">${now}</span>${msg}</div>`;
+  area.scrollTop = area.scrollHeight;
+}
+
+function setProgress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+}
+
+// ── Main Swap ─────────────────────────────────────────────
+async function runSwap() {
+  if (!state.source || !state.target || !state.apiKey) return;
+
+  setLoading(true);
+  document.getElementById('progressSection').style.display = 'block';
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('logArea').innerHTML = '';
+  setProgress(5);
+
+  const provider = state.provider;
+  log(`Starting via <span style="color:#f9a8d4;">${providers[provider].endpoint}</span>`);
+  log('Encoding images...');
+  setProgress(15);
+
+  const sourceB64 = state.source.split(',')[1];
+  const targetB64 = state.target.split(',')[1];
+  setProgress(25);
+  log('Sending request to API...');
+
+  try {
+    let resultUrl = null;
+    if (provider === 'falai')         resultUrl = await callFalAI(sourceB64, targetB64);
+    else if (provider === 'segmind')   resultUrl = await callSegmind(sourceB64, targetB64);
+    else if (provider === 'replicate') resultUrl = await callReplicate(sourceB64, targetB64);
+    else if (provider === 'rapidapi') resultUrl = await callRapidAPI(sourceB64, targetB64);
+    else                              resultUrl = await callFaceSwapper(sourceB64, targetB64);
+
+    setProgress(90);
+    log('Processing complete!');
+    if (!resultUrl) throw new Error('No result image returned from API');
+    setProgress(100);
+    showResult(resultUrl);
+    log('<span style="color:#4ade80;">Done ✓</span>');
+  } catch (err) {
+    console.error(err);
+    let displayMsg = err.message;
+    if (displayMsg.includes('fal.ai/dashboard/billing')) {
+      displayMsg = `fal.ai balance exhausted — <a href="https://fal.ai/dashboard/billing" target="_blank" style="color:#a99bff;text-decoration:underline;">top up here</a>`;
+    }
+    showToast('❌ ' + err.message, 'error');
+    log('<span style="color:#f87171;">Error: ' + displayMsg + '</span>');
+    setLoading(false);
+  }
+}
+
+// ── API Calls ─────────────────────────────────────────────
+async function callFalAI(s, t) {
+  log('[fal.ai] Submitting face swap request...');
+  const submitRes = await fetch('https://queue.fal.run/fal-ai/face-swap', {
+    method: 'POST',
+    headers: { 'Authorization': 'Key ' + state.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_image_url: 'data:image/jpeg;base64,' + s, target_image_url: 'data:image/jpeg;base64,' + t })
+  });
+  if (!submitRes.ok) {
+    const e = await submitRes.json().catch(()=>({}));
+    const msg = e.detail || e.message || '';
+    if (msg.toLowerCase().includes('exhausted') || msg.toLowerCase().includes('locked') || msg.toLowerCase().includes('balance')) {
+      throw new Error('fal.ai balance exhausted — top up at fal.ai/dashboard/billing');
+    }
+    throw new Error(msg || 'fal.ai error ' + submitRes.status);
+  }
+  const submitted = await submitRes.json();
+  const requestId = submitted.request_id;
+  log('[fal.ai] Queued (ID: ' + requestId + '). Polling...');
+  for (let i = 0; i < 60; i++) {
+    await sleep(2000); setProgress(30 + i);
+    const statusRes = await fetch('https://queue.fal.run/fal-ai/face-swap/requests/' + requestId + '/status', {
+      headers: { 'Authorization': 'Key ' + state.apiKey }
+    });
+    const status = await statusRes.json();
+    log('[fal.ai] Status: <span style="color:#a99bff;">' + status.status + '</span>');
+    if (status.status === 'COMPLETED') {
+      const resultRes = await fetch('https://queue.fal.run/fal-ai/face-swap/requests/' + requestId, {
+        headers: { 'Authorization': 'Key ' + state.apiKey }
+      });
+      const result = await resultRes.json();
+      if (result.image && result.image.url) return result.image.url;
+      if (result.images && result.images[0]) return result.images[0].url;
+      throw new Error('No image in fal.ai response');
+    }
+    if (status.status === 'FAILED') throw new Error('fal.ai failed: ' + (status.error || 'unknown error'));
+  }
+  throw new Error('fal.ai timed out');
+}
+
+async function callFaceSwapper(s, t) {
+  log('[FaceSwapper.ai] Calling API...');
+  const res = await fetch('https://api.faceswapper.ai/v1/swap', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + state.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_image: s, target_image: t, face_restore: document.getElementById('faceRestore').value === 'true', blend: parseInt(document.getElementById('blendRange').value)/100 })
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `API error ${res.status}`); }
+  const data = await res.json();
+  return data.output_image_url || data.result_url || data.url;
+}
+
+async function callSegmind(s, t) {
+  log('[Segmind] Calling faceswap model...');
+  const res = await fetch('https://api.segmind.com/v1/faceswap', {
+    method: 'POST',
+    headers: { 'x-api-key': state.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_img: s, target_img: t, input_faces_index: 0, source_faces_index: 0, face_restore: document.getElementById('faceRestore').value === 'true', base64: true })
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || e.message || `Segmind error ${res.status}`); }
+  const data = await res.json();
+  if (data.image) return 'data:image/jpeg;base64,' + data.image;
+  throw new Error('No image in Segmind response');
+}
+
+async function callReplicate(s, t) {
+  const PROXY = 'https://face-swap.shirley-escarilla1962.workers.dev';
+  const MODEL_VERSION = 'a5a034d3b4ceaf76ab8e9e68d6d9b40e579ec3c6e9ced47bf6dc53ef8b2e0d41';
+  log('[Replicate] Creating prediction...');
+  const createRes = await fetch(PROXY + '/v1/predictions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + state.apiKey, 'Content-Type': 'application/json', 'Prefer': 'wait' },
+    body: JSON.stringify({ version: MODEL_VERSION, input: { swap_image: 'data:image/jpeg;base64,'+s, target_image: 'data:image/jpeg;base64,'+t } })
+  });
+  if (!createRes.ok) { const e = await createRes.json().catch(()=>({})); throw new Error(e.detail || e.error || `Replicate error ${createRes.status}`); }
+  const prediction = await createRes.json();
+  if (prediction.output) {
+    const out = prediction.output;
+    return Array.isArray(out) ? out[0] : (typeof out === 'string' ? out : null);
+  }
+  log('[Replicate] Polling (ID: ' + prediction.id + ')...');
+  for (let i = 0; i < 60; i++) {
+    await sleep(2000); setProgress(30 + i);
+    const pollRes = await fetch(`${PROXY}/v1/predictions/${prediction.id}`, {
+      headers: { 'Authorization': 'Bearer ' + state.apiKey }
+    });
+    const poll = await pollRes.json();
+    log(`[Replicate] Status: <span style="color:#a99bff;">${poll.status}</span>`);
+    if (poll.status === 'succeeded') { const out = poll.output; return Array.isArray(out) ? out[0] : (typeof out === 'string' ? out : out?.image || out?.url || null); }
+    if (poll.status === 'failed') throw new Error('Replicate failed: ' + (poll.error || 'unknown'));
+  }
+  throw new Error('Replicate timed out');
+}
+
+async function callRapidAPI(s, t) {
+  log('[RapidAPI] Calling face swap endpoint...');
+  const res = await fetch('https://ai-face-swap.p.rapidapi.com/faceswap', {
+    method: 'POST',
+    headers: { 'x-rapidapi-key': state.apiKey, 'x-rapidapi-host': 'ai-face-swap.p.rapidapi.com', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_image: s, target_image: t, face_restore: document.getElementById('faceRestore').value === 'true' })
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `RapidAPI error ${res.status}`); }
+  const data = await res.json();
+  if (data.image) return 'data:image/jpeg;base64,' + data.image;
+  return data.url || data.output;
+}
+
+// ── Result ────────────────────────────────────────────────
+function showResult(resultUrl) {
+  document.getElementById('resultOriginal').src = state.target;
+  document.getElementById('resultSwapped').src = resultUrl;
+  document.getElementById('downloadBtn').href = resultUrl;
+  document.getElementById('resultSection').style.display = 'block';
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+  setLoading(false);
+  showToast('✅ Face swap complete!', 'success');
+}
+
+// ── UI Helpers ────────────────────────────────────────────
+function setLoading(val) {
+  const btn = document.getElementById('runBtn');
+  const spinner = document.getElementById('spinner');
+  const label = document.getElementById('runLabel');
+  btn.disabled = val;
+  spinner.style.display = val ? 'block' : 'none';
+  label.textContent = val ? 'Processing...' : '🚀 Run Face Swap';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 4000);
+}
+
+function resetAll() {
+  removeImage({ stopPropagation: () => {} }, 'source');
+  removeImage({ stopPropagation: () => {} }, 'target');
+  document.getElementById('progressSection').style.display = 'none';
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('logArea').innerHTML = '';
+  setProgress(0);
+  checkReady();
+}
+
+// ── Init ──────────────────────────────────────────────────
+if (location.protocol === 'file:') {
+  document.getElementById('fileWarning').style.display = 'block';
+}
+updateProviderInfo();
+validateKey();
+</script>
+</body>
+</html>
