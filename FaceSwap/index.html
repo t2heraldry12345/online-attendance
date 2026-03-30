@@ -646,8 +646,9 @@ async function callSegmind(s, t) {
 }
 
 async function callReplicate(s, t) {
+  const PROXY = 'https://face-swap.shirley-escarilla1962.workers.dev';
   log('[Replicate] Creating prediction...');
-  const createRes = await fetch('https://api.replicate.com/v1/models/yan-ops/face-swap/predictions', {
+  const createRes = await fetch(PROXY + '/v1/models/yan-ops/face-swap/predictions', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + state.apiKey, 'Content-Type': 'application/json', 'Prefer': 'wait' },
     body: JSON.stringify({ input: { det_thresh: 0.1, request_id: '', swap_image: 'data:image/jpeg;base64,'+s, target_image: 'data:image/jpeg;base64,'+t } })
@@ -657,7 +658,7 @@ async function callReplicate(s, t) {
   log('[Replicate] Polling (ID: ' + prediction.id + ')...');
   for (let i = 0; i < 60; i++) {
     await sleep(2000); setProgress(30 + i);
-    const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, { headers: { 'Authorization': 'Token ' + state.apiKey } });
+    const pollRes = await fetch(`${PROXY}/v1/predictions/${prediction.id}`, { headers: { 'Authorization': 'Token ' + state.apiKey } });
     const poll = await pollRes.json();
     log(`[Replicate] Status: <span style="color:#a99bff;">${poll.status}</span>`);
     if (poll.status === 'succeeded') { const out = poll.output; return Array.isArray(out) ? out[0] : (typeof out === 'string' ? out : out?.image || out?.url || null); }
