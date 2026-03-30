@@ -648,21 +648,27 @@ async function callSegmind(s, t) {
 async function callReplicate(s, t) {
   const PROXY = 'https://face-swap.shirley-escarilla1962.workers.dev';
   log('[Replicate] Creating prediction...');
-  const createRes = await fetch(PROXY + '/v1/models/yan-ops/face-swap/predictions', {
+  const createRes = await fetch(PROXY + '/v1/models/codeplugtech/face-swap/predictions', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + state.apiKey, 'Content-Type': 'application/json', 'Prefer': 'wait' },
-    body: JSON.stringify({ input: { det_thresh: 0.1, request_id: '', swap_image: 'data:image/jpeg;base64,'+s, target_image: 'data:image/jpeg;base64,'+t } })
+    body: JSON.stringify({ input: { swap_image: 'data:image/jpeg;base64,'+s, target_image: 'data:image/jpeg;base64,'+t } })
   });
-  if (!createRes.ok) { const e = await createRes.json().catch(()=>({})); throw new Error(e.detail || `Replicate error ${createRes.status}`); }
+  if (!createRes.ok) { const e = await createRes.json().catch(()=>({})); throw new Error(e.detail || e.error || `Replicate error ${createRes.status}`); }
   const prediction = await createRes.json();
+  if (prediction.output) {
+    const out = prediction.output;
+    return Array.isArray(out) ? out[0] : (typeof out === 'string' ? out : null);
+  }
   log('[Replicate] Polling (ID: ' + prediction.id + ')...');
   for (let i = 0; i < 60; i++) {
     await sleep(2000); setProgress(30 + i);
-    const pollRes = await fetch(`${PROXY}/v1/predictions/${prediction.id}`, { headers: { 'Authorization': 'Token ' + state.apiKey } });
+    const pollRes = await fetch(`${PROXY}/v1/predictions/${prediction.id}`, {
+      headers: { 'Authorization': 'Bearer ' + state.apiKey }
+    });
     const poll = await pollRes.json();
     log(`[Replicate] Status: <span style="color:#a99bff;">${poll.status}</span>`);
     if (poll.status === 'succeeded') { const out = poll.output; return Array.isArray(out) ? out[0] : (typeof out === 'string' ? out : out?.image || out?.url || null); }
-    if (poll.status === 'failed') throw new Error('Replicate failed: ' + poll.error);
+    if (poll.status === 'failed') throw new Error('Replicate failed: ' + (poll.error || 'unknown'));
   }
   throw new Error('Replicate timed out');
 }
