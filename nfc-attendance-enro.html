@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>ENRO NFC Attendance System</title>
+
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --primary: #6c63ff;
+  --primary-dark: #5a52d5;
+  --primary-light: #8b85ff;
+  --accent: #00d4aa;
+  --accent-dark: #00b891;
+  --danger: #ff4757;
+  --warning: #ffa502;
+  --success: #2ed573;
+  --dark-bg: #0f0f23;
+  --dark-surface: #1a1a2e;
+  --dark-card: #16213e;
+  --dark-card2: #1e2a45;
+  --dark-border: rgba(108,99,255,0.2);
+  --text-primary: #e8e8f0;
+  --text-secondary: #9090b0;
+  --text-muted: #606080;
+  --font-main: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 30px rgba(108,99,255,0.25);
+  --bottom-nav-height: 70px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  font-family: var(--font-main);
+  background: var(--dark-bg);
+  color: var(--text-primary);
+  height: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Page wrapper: sticky header + scrollable body ── */
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--dark-bg); }
+::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+
+/* ── Top Header ── */
+.top-header {
+  background: var(--dark-surface);
+  border-bottom: 1px solid var(--dark-border);
+  padding: 0 20px;
+  height: 64px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-logo {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: white;
+}
+.brand-name {
+  font-size: 17px; font-weight: 700;
+  background: linear-gradient(90deg, var(--primary-light), var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: -0.3px;
+}
+.brand-sub { font-size: 11px; color: var(--text-muted); margin-top: -2px; }
+
+.header-right { display: flex; align-items: center; gap: 8px; }
+
+.net-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.3s;
+}
+.net-badge.online { background: rgba(46,213,115,0.15); color: var(--success); }
+.net-badge.offline { background: rgba(255,165,2,0.15); color: var(--warning); }
+.net-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  animation: blink 2s infinite;
+}
+.net-badge.online .net-dot { background: var(--success); }
+.net-badge.offline .net-dot { background: var(--warning); animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.pending-alert {
+  background: rgba(255,165,2,0.15);
+  border: 1px solid rgba(255,165,2,0.3);
+  color: var(--warning);
+  padding: 4px 10px; border-radius: 16px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; display: none;
+}
+
+/* ── Main Content ── */
+.main-content {
+  padding: 20px;
+  padding-bottom: calc(var(--bottom-nav-height) + 32px);
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Bottom Nav (Mobile) ── */
+.bottom-nav {
+  height: var(--bottom-nav-height);
+  flex-shrink: 0;
+  background: var(--dark-surface);
+  border-top: 1px solid var(--dark-border);
+  display: flex;
+  align-items: stretch;
+  z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom);
+  backdrop-filter: blur(12px);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer;
+  color: var(--text-muted);
+  font-size: 11px; font-weight: 500;
+  transition: all 0.2s;
+  border: none; background: none;
+  padding: 8px 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-item i { font-size: 20px; transition: all 0.2s; }
+.nav-item.active { color: var(--primary); }
+.nav-item.active i {
+  color: var(--primary);
+  filter: drop-shadow(0 0 8px rgba(108,99,255,0.6));
+  transform: translateY(-2px);
+}
+
+/* Desktop Sidebar */
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--dark-surface);
+  border-right: 1px solid var(--dark-border);
+  padding: 20px 0;
+  display: none;
+  z-index: 90;
+  height: 100%;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer; color: var(--text-secondary);
+  font-size: 14px; font-weight: 500;
+  transition: all 0.2s;
+  border: none; background: none; width: 100%;
+  text-align: left;
+}
+.sidebar-item:hover { background: rgba(108,99,255,0.08); color: var(--text-primary); }
+.sidebar-item.active { color: var(--primary); background: rgba(108,99,255,0.12); border-right: 3px solid var(--primary); }
+.sidebar-item i { width: 20px; text-align: center; font-size: 16px; }
+
+@media (min-width: 992px) {
+  .sidebar { display: flex; flex-direction: column; }
+  .bottom-nav { display: none; }
+  .main-content {
+    padding-bottom: 24px;
+  }
+  .scroll-area {
+    display: flex;
+  }
+}
+
+/* ── Pages ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── Cards ── */
+.glass-card {
+  background: var(--dark-card);
+  border: 1px solid var(--dark-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.glass-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(108,99,255,0.4), transparent);
+}
+
+.section-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1.2px;
+  margin-bottom: 16px;
+}
+
+/* ── NFC Scanner ── */
+.scan-ring-wrapper {
+  display: flex; justify-content: center; align-items: center;
+  padding: 32px 0 24px;
+}
+.scan-ring {
+  position: relative; width: 200px; height: 200px;
+}
+.scan-ring-outer {
+  width: 200px; height: 200px; border-radius: 50%;
+  border: 2px solid var(--dark-border);
+  position: absolute; top: 0; left: 0;
+  transition: border-color 0.3s;
+}
+.scan-ring-mid {
+  width: 160px; height: 160px; border-radius: 50%;
+  border: 2px solid rgba(108,99,255,0.3);
+  position: absolute; top: 20px; left: 20px;
+  transition: all 0.3s;
+}
+.scan-ring-inner {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: var(--dark-card2);
+  border: 2px solid rgba(108,99,255,0.4);
+  position: absolute; top: 40px; left: 40px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.3s;
+  box-shadow: 0 0 0 0 rgba(108,99,255,0);
+}
+.scan-ring-inner:hover {
+  background: rgba(108,99,255,0.1);
+  box-shadow: 0 0 20px rgba(108,99,255,0.3);
+}
+.scan-ring-inner i { font-size: 32px; color: var(--primary); margin-bottom: 4px; }
+.scan-ring-inner span { font-size: 10px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* Scanning animation */
+.scan-ring.scanning .scan-ring-outer {
+  border-color: var(--primary);
+  animation: rotate-ring 3s linear infinite;
+}
+.scan-ring.scanning .scan-ring-mid {
+  border-color: var(--primary);
+  animation: rotate-ring 2s linear infinite reverse;
+}
+.scan-ring.scanning .scan-ring-inner {
+  background: rgba(108,99,255,0.15);
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+@keyframes rotate-ring { to { transform: rotate(360deg); } }
+@keyframes pulse-glow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(108,99,255,0.4); }
+  50% { box-shadow: 0 0 0 20px rgba(108,99,255,0); }
+}
+
+.scan-ring.success .scan-ring-outer { border-color: var(--success); }
+.scan-ring.success .scan-ring-mid { border-color: var(--success); }
+.scan-ring.success .scan-ring-inner { background: rgba(46,213,115,0.15); border-color: var(--success); }
+.scan-ring.success .scan-ring-inner i { color: var(--success); }
+
+.scan-ring.duplicate .scan-ring-outer { border-color: var(--warning); }
+.scan-ring.duplicate .scan-ring-inner { background: rgba(255,165,2,0.1); border-color: var(--warning); }
+.scan-ring.duplicate .scan-ring-inner i { color: var(--warning); }
+
+.scan-ring.error .scan-ring-outer { border-color: var(--danger); }
+.scan-ring.error .scan-ring-inner { background: rgba(255,71,87,0.1); border-color: var(--danger); }
+.scan-ring.error .scan-ring-inner i { color: var(--danger); }
+
+.scan-status-text {
+  text-align: center;
+  font-size: 15px; font-weight: 600;
+  color: var(--text-primary);
+  min-height: 24px;
+  margin-bottom: 6px;
+}
+.scan-status-sub {
+  text-align: center;
+  font-size: 12px; color: var(--text-muted);
+  min-height: 18px;
+}
+
+/* ── Stat Cards ── */
+.stat-card {
+  background: var(--dark-card2);
+  border: 1px solid var(--dark-border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+}
+.stat-val {
+  font-size: 32px; font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--primary-light), var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; }
+
+/* ── Buttons ── */
+.btn-primary-custom {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border: none; color: white;
+  padding: 12px 24px; border-radius: 12px;
+  font-family: var(--font-main);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 15px rgba(108,99,255,0.4);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-primary-custom:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(108,99,255,0.5); }
+.btn-primary-custom:active { transform: translateY(0); }
+
+.btn-accent-custom {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  border: none; color: #0f0f23;
+  padding: 12px 24px; border-radius: 12px;
+  font-family: var(--font-main);
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 15px rgba(0,212,170,0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-accent-custom:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,212,170,0.45); }
+
+.btn-outline-custom {
+  background: transparent;
+  border: 1px solid var(--dark-border);
+  color: var(--text-secondary);
+  padding: 10px 18px; border-radius: 10px;
+  font-family: var(--font-main);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 7px;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-outline-custom:hover { border-color: var(--primary); color: var(--primary); background: rgba(108,99,255,0.07); }
+
+.btn-danger-custom {
+  background: rgba(255,71,87,0.12);
+  border: 1px solid rgba(255,71,87,0.3);
+  color: var(--danger);
+  padding: 9px 16px; border-radius: 10px;
+  font-family: var(--font-main);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-danger-custom:hover { background: rgba(255,71,87,0.2); }
+
+/* ── Form Controls ── */
+.form-control-dark {
+  background: var(--dark-card2);
+  border: 1px solid var(--dark-border);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: var(--font-main);
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.2s;
+  -webkit-appearance: none;
+}
+.form-control-dark:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+  background: var(--dark-card2);
+  color: var(--text-primary);
+}
+.form-control-dark::placeholder { color: var(--text-muted); }
+.form-control-dark option { background: var(--dark-surface); }
+
+.form-label-dark { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; display: block; }
+
+/* ── Log Items ── */
+.log-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(108,99,255,0.08);
+  transition: background 0.15s;
+}
+.log-item:last-child { border-bottom: none; }
+
+.avatar {
+  width: 42px; height: 42px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+  flex-shrink: 0;
+  letter-spacing: -0.5px;
+}
+.avatar-purple { background: rgba(108,99,255,0.2); color: var(--primary-light); }
+.avatar-teal { background: rgba(0,212,170,0.2); color: var(--accent); }
+.avatar-pink { background: rgba(255,71,87,0.2); color: #ff6b81; }
+.avatar-amber { background: rgba(255,165,2,0.2); color: var(--warning); }
+.avatar-green { background: rgba(46,213,115,0.2); color: var(--success); }
+
+.log-name { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.3; }
+.log-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; font-family: var(--font-mono); }
+
+.badge-synced {
+  padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  background: rgba(46,213,115,0.15); color: var(--success);
+  white-space: nowrap;
+}
+.badge-pending {
+  padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  background: rgba(255,165,2,0.15); color: var(--warning);
+  white-space: nowrap;
+}
+.badge-in { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(46,213,115,0.12); color: var(--success); }
+.badge-out { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(255,71,87,0.12); color: var(--danger); }
+
+.log-time { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+
+/* ── Search box ── */
+.search-box {
+  position: relative; margin-bottom: 14px;
+}
+.search-box i {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 14px;
+}
+.search-box .form-control-dark { padding-left: 38px; }
+
+/* ── Student Card ── */
+.student-card {
+  background: var(--dark-card2);
+  border: 1px solid var(--dark-border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 10px;
+  transition: all 0.25s cubic-bezier(.4,0,.2,1);
+  position: relative;
+  overflow: hidden;
+}
+.student-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--primary), var(--accent));
+  opacity: 0;
+  border-radius: 3px 0 0 3px;
+  transition: opacity 0.25s;
+}
+.student-card:hover { 
+  border-color: rgba(108,99,255,0.45); 
+  background: rgba(108,99,255,0.07); 
+  transform: translateX(3px);
+}
+.student-card:hover::before { opacity: 1; }
+
+.student-info { flex: 1; min-width: 0; }
+.student-name { font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.student-dept { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-top: 1px; text-transform: uppercase; letter-spacing: 0.6px; }
+.student-id { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px; }
+
+/* ── Rate badge ── */
+.rate-badge {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 52px; height: 52px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  font-size: 15px; font-weight: 800;
+  line-height: 1;
+  gap: 2px;
+}
+.rate-badge .rate-unit { font-size: 9px; font-weight: 600; opacity: 0.75; letter-spacing: 0.5px; }
+.rate-badge.rate-high { background: rgba(46,213,115,0.15); color: var(--success); border: 1px solid rgba(46,213,115,0.25); }
+.rate-badge.rate-mid  { background: rgba(255,165,2,0.13); color: var(--warning); border: 1px solid rgba(255,165,2,0.25); }
+.rate-badge.rate-low  { background: rgba(255,71,87,0.12); color: var(--danger); border: 1px solid rgba(255,71,87,0.25); }
+
+/* ── Days chip ── */
+.days-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(108,99,255,0.1);
+  border: 1px solid rgba(108,99,255,0.2);
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 11px; font-weight: 600;
+  color: var(--primary-light);
+  margin-top: 6px;
+}
+.days-chip i { font-size: 9px; }
+
+/* ── Progress bar ── */
+.att-progress { 
+  height: 5px; 
+  background: rgba(255,255,255,0.07); 
+  border-radius: 10px; 
+  overflow: hidden; 
+  margin-top: 8px;
+  position: relative;
+}
+.att-progress-bar { 
+  height: 100%; 
+  background: linear-gradient(90deg, var(--primary), var(--accent)); 
+  border-radius: 10px; 
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  position: relative;
+}
+.att-progress-bar::after {
+  content: '';
+  position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+  background: rgba(255,255,255,0.4);
+  border-radius: 10px;
+}
+.rate-high .att-progress-bar { background: linear-gradient(90deg, #1fad62, var(--success)); }
+.rate-mid .att-progress-bar  { background: linear-gradient(90deg, #cc8400, var(--warning)); }
+.rate-low .att-progress-bar  { background: linear-gradient(90deg, #c0162a, var(--danger)); }
+
+/* ── Summary header stats ── */
+.summary-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px; gap: 8px; flex-wrap: wrap;
+}
+.summary-stat-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(108,99,255,0.1);
+  border: 1px solid var(--dark-border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-secondary);
+}
+.summary-stat-pill span { color: var(--primary-light); }
+
+/* ── Toast ── */
+.toast-container-custom {
+  position: fixed; bottom: calc(var(--bottom-nav-height) + 12px); left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  pointer-events: none;
+}
+@media (min-width: 992px) {
+  .toast-container-custom { bottom: 24px; right: 24px; left: auto; transform: none; align-items: flex-end; }
+}
+.toast-item {
+  background: var(--dark-card);
+  border: 1px solid var(--dark-border);
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 13px; font-weight: 500;
+  color: var(--text-primary);
+  display: flex; align-items: center; gap: 10px;
+  animation: slide-up 0.3s ease;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  max-width: 320px;
+}
+.toast-item.success { border-left: 3px solid var(--success); }
+.toast-item.error { border-left: 3px solid var(--danger); }
+.toast-item.warning { border-left: 3px solid var(--warning); }
+.toast-item.info { border-left: 3px solid var(--primary); }
+@keyframes slide-up { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── Modal ── */
+.modal-dark .modal-content {
+  background: var(--dark-card);
+  border: 1px solid var(--dark-border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+}
+.modal-dark .modal-header {
+  border-bottom: 1px solid var(--dark-border);
+  padding: 20px 24px 16px;
+}
+.modal-dark .modal-title { font-size: 17px; font-weight: 600; }
+.modal-dark .modal-body { padding: 20px 24px; }
+.modal-dark .modal-footer { border-top: 1px solid var(--dark-border); padding: 16px 24px; }
+.modal-dark .btn-close { filter: invert(1); }
+
+/* ── Page titles ── */
+.page-heading {
+  font-size: 22px; font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+.page-sub {
+  font-size: 13px; color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+/* ── Dashboard chart placeholder ── */
+.chart-bar-wrap { display: flex; align-items: flex-end; gap: 8px; height: 80px; margin-top: 12px; }
+.chart-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.chart-bar { width: 100%; border-radius: 6px 6px 0 0; background: linear-gradient(0deg, var(--primary), var(--primary-light)); min-height: 0; transition: height 0.5s ease; }
+.chart-bar.empty-bar { background: rgba(108,99,255,0.1); height: 4px !important; border-radius: 4px; }
+.chart-bar-lbl { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+
+/* ── Empty state ── */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.empty-state i { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+.empty-state p { font-size: 14px; }
+
+/* ── Scan history strip ── */
+.recent-scans { display: flex; flex-direction: column; gap: 0; }
+
+/* ── Settings groups ── */
+.settings-group-title {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1.5px;
+  margin: 20px 0 10px;
+}
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(108,99,255,0.08);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-info .label { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.settings-row-info .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Toggle Switch ── */
+.toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer;
+  top:0; left:0; right:0; bottom:0;
+  background: var(--dark-card2);
+  border: 1px solid var(--dark-border);
+  border-radius: 24px; transition: .3s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute;
+  width: 18px; height: 18px; left: 2px; bottom: 2px;
+  background: var(--text-muted); border-radius: 50%;
+  transition: .3s;
+}
+.toggle-switch input:checked + .toggle-slider { background: rgba(108,99,255,0.3); border-color: var(--primary); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--primary); }
+
+/* ── Report table ── */
+.report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.report-table th {
+  background: var(--dark-card2); color: var(--text-muted);
+  padding: 10px 12px; text-align: left;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+  border-bottom: 1px solid var(--dark-border);
+  white-space: nowrap;
+}
+.report-table td {
+  padding: 11px 12px; border-bottom: 1px solid rgba(108,99,255,0.06);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+.report-table tr:last-child td { border-bottom: none; }
+.report-table tr:hover td { background: rgba(108,99,255,0.04); }
+.report-table .mono { font-family: var(--font-mono); font-size: 12px; }
+
+/* ── Floating scan button ── */
+.fab {
+  position: fixed; bottom: calc(var(--bottom-nav-height) + 16px); right: 20px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border: none; color: white; font-size: 22px;
+  display: none;
+  align-items: center; justify-content: center;
+  box-shadow: 0 6px 20px rgba(108,99,255,0.5);
+  cursor: pointer; z-index: 150;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.fab:hover { transform: scale(1.08); }
+.fab:active { transform: scale(0.95); }
+
+/* ── Attendance rate color ── */
+.rate-high { color: var(--success); }
+.rate-mid { color: var(--warning); }
+.rate-low { color: var(--danger); }
+
+/* ── Responsive tweaks ── */
+@media (max-width: 576px) {
+  .main-content { padding: 14px 14px; }
+  .glass-card { padding: 16px; }
+  .page-heading { font-size: 20px; }
+  .scan-ring { width: 170px; height: 170px; }
+  .scan-ring-outer { width: 170px; height: 170px; }
+  .scan-ring-mid { width: 134px; height: 134px; top: 18px; left: 18px; }
+  .scan-ring-inner { width: 100px; height: 100px; top: 35px; left: 35px; }
+  .scan-ring-inner i { font-size: 26px; }
+}
+
+/* Report overflow */
+.table-responsive-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── Danger Zone redesign ── */
+.danger-zone-box {
+  background: rgba(255,71,87,0.05);
+  border: 1px solid rgba(255,71,87,0.2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.danger-divider {
+  height: 1px;
+  background: rgba(255,71,87,0.12);
+}
+.danger-btn-clear,
+.danger-btn-reset {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.danger-btn-clear:hover { background: rgba(255,71,87,0.08); }
+.danger-btn-reset:hover { background: rgba(255,87,34,0.08); }
+.danger-btn-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: rgba(255,71,87,0.15);
+  border: 1px solid rgba(255,71,87,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--danger);
+  flex-shrink: 0;
+}
+.danger-btn-icon-reset {
+  background: rgba(255,87,34,0.15);
+  border-color: rgba(255,87,34,0.25);
+  color: #ff5722;
+}
+.danger-btn-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.danger-btn-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--danger);
+  font-family: var(--font-main);
+}
+.danger-btn-reset .danger-btn-label { color: #ff5722; }
+.danger-btn-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-main);
+}
+.danger-btn-arrow {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+<div class="app-wrapper">
+
+<!-- ══ TOP HEADER ══════════════════════════════════════ -->
+<div class="top-header">
+  <div class="brand">
+    <div class="brand-logo"><i class="fas fa-wifi"></i></div>
+    <div>
+      <div class="brand-name">ENRO Attendance</div>
+      <div class="brand-sub" id="classLabel">Loading…</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="pending-alert" id="pendingAlert" onclick="syncData()">
+      <i class="fas fa-clock"></i> <span id="pendingAlertCount">0</span> pending
+    </div>
+    <div class="net-badge online" id="netBadge">
+      <div class="net-dot"></div>
+      <span id="netText">Online</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SIDEBAR + SCROLL AREA ════════════════════════════ -->
+<div class="scroll-area">
+
+<!-- ══ SIDEBAR (desktop) ════════════════════════════════ -->
+<div class="sidebar">
+  <button class="sidebar-item active" onclick="showPage('dashboard', this)">
+    <i class="fas fa-chart-pie"></i> Dashboard
+  </button>
+  <button class="sidebar-item" onclick="showPage('scan', this)">
+    <i class="fas fa-wifi"></i> Scan NFC
+  </button>
+  <button class="sidebar-item" onclick="showPage('log', this)">
+    <i class="fas fa-list-ul"></i> Attendance Log
+  </button>
+  <button class="sidebar-item" onclick="showPage('students', this)">
+    <i class="fas fa-id-badge"></i> Employees
+  </button>
+  <button class="sidebar-item" onclick="showPage('reports', this)">
+    <i class="fas fa-file-chart-column"></i> Reports
+  </button>
+  <button class="sidebar-item" onclick="showPage('settings', this)">
+    <i class="fas fa-gear"></i> Settings
+  </button>
+</div>
+
+<!-- ══ MAIN CONTENT ══════════════════════════════════════ -->
+<div class="main-content">
+
+  <!-- ── DASHBOARD ── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-heading">Dashboard</div>
+    <div class="page-sub" id="dashDate">Today, —</div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-val" id="statPresent">0</div>
+          <div class="stat-label"><i class="fas fa-circle-check me-1" style="color:var(--success)"></i>Present</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-val" id="statAbsent">0</div>
+          <div class="stat-label"><i class="fas fa-circle-xmark me-1" style="color:var(--danger)"></i>Absent</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-val" id="statRate">0%</div>
+          <div class="stat-label"><i class="fas fa-percent me-1" style="color:var(--accent)"></i>Rate</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card">
+          <div class="stat-val" id="statPending">0</div>
+          <div class="stat-label"><i class="fas fa-cloud-arrow-up me-1" style="color:var(--warning)"></i>Pending Sync</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly chart -->
+    <div class="glass-card">
+      <div class="section-title">7-day attendance</div>
+      <div class="chart-bar-wrap" id="weekChart"></div>
+    </div>
+
+    <!-- Recent logs -->
+    <div class="glass-card">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="section-title mb-0">Recent scans</div>
+        <button class="btn-outline-custom" style="padding:6px 12px; font-size:12px;" onclick="showPage('log', null)">View all</button>
+      </div>
+      <div id="recentScans"></div>
+    </div>
+  </div>
+
+  <!-- ── SCAN PAGE ── -->
+  <div class="page" id="page-scan">
+    <div class="page-heading">NFC Scanner</div>
+    <div class="page-sub">I-tap ang NFC card sa likod ng telepono</div>
+
+    <div class="glass-card">
+      <div class="scan-ring-wrapper">
+        <div class="scan-ring" id="scanRing">
+          <div class="scan-ring-outer"></div>
+          <div class="scan-ring-mid"></div>
+          <div class="scan-ring-inner" onclick="startScan()">
+            <i class="fas fa-wifi" id="scanIcon"></i>
+            <span id="scanLabel">TAP</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="scan-status-text" id="scanStatusText">Ready to scan</div>
+      <div class="scan-status-sub" id="scanStatusSub">Pindutin ang icon para simulan</div>
+
+      <div class="d-flex gap-2 justify-content-center flex-wrap mt-4">
+        <button class="btn-primary-custom" onclick="startScan()">
+          <i class="fas fa-play"></i> Simulan
+        </button>
+        <button class="btn-outline-custom" onclick="stopScan()">
+          <i class="fas fa-stop"></i> Stop
+        </button>
+        <button class="btn-outline-custom" onclick="openManualModal()">
+          <i class="fas fa-keyboard"></i> Manual
+        </button>
+      </div>
+    </div>
+
+    <!-- Today's scan list -->
+    <div class="glass-card">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="section-title mb-0">Scanned today (<span id="todayCount">0</span>)</div>
+        <button class="btn-accent-custom" style="padding:8px 14px; font-size:12px;" onclick="syncData()" id="syncBtn">
+          <i class="fas fa-cloud-arrow-up"></i> Sync
+        </button>
+      </div>
+      <div id="todayScanList"></div>
+    </div>
+  </div>
+
+  <!-- ── LOG PAGE ── -->
+  <div class="page" id="page-log">
+    <div class="page-heading">Attendance Log</div>
+    <div class="page-sub">Lahat ng recorded attendance</div>
+
+    <div class="glass-card">
+      <div class="row g-2 mb-3">
+        <div class="col-12 col-sm-6">
+          <div class="search-box">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="text" class="form-control-dark" id="logSearch" placeholder="Hanapin…" oninput="renderLog()">
+          </div>
+        </div>
+        <div class="col-6 col-sm-3">
+          <select class="form-control-dark" id="logFilterDate" onchange="renderLog()">
+            <option value="">Lahat ng araw</option>
+          </select>
+        </div>
+        <div class="col-6 col-sm-3">
+          <button class="btn-outline-custom w-100 justify-content-center" onclick="exportCSV()">
+            <i class="fas fa-file-csv"></i> Export
+          </button>
+        </div>
+      </div>
+      <div id="logList"></div>
+    </div>
+  </div>
+
+  <!-- ── STUDENTS PAGE ── -->
+  <div class="page" id="page-students">
+    <div class="page-heading">Employees</div>
+    <div class="page-sub">Mag-manage ng registered employees</div>
+
+    <!-- Add employee card -->
+    <div class="glass-card">
+      <div class="section-title">Magdagdag ng Employee</div>
+      <div class="row g-2">
+        <div class="col-12 col-sm-5">
+          <label class="form-label-dark">Buong Pangalan</label>
+          <input type="text" class="form-control-dark" id="newName" placeholder="Juan dela Cruz">
+        </div>
+        <div class="col-12 col-sm-4">
+          <label class="form-label-dark">Position</label>
+          <input type="text" class="form-control-dark" id="newPosition" placeholder="Environmental Management Specialist">
+        </div>
+        <div class="col-12 col-sm-3">
+          <label class="form-label-dark">Department</label>
+          <input type="text" class="form-control-dark" id="newDepartment" placeholder="ENRO">
+        </div>
+        <div class="col-12 col-sm-4">
+          <label class="form-label-dark">Employee Type</label>
+          <select class="form-control-dark" id="newEmpType">
+            <option value="Regular">Regular</option>
+            <option value="Casual">Casual</option>
+            <option value="Job Order">Job Order</option>
+            <option value="Contractual">Contractual</option>
+            <option value="Seconded">Seconded</option>
+          </select>
+        </div>
+        <div class="col-12 col-sm-4">
+          <label class="form-label-dark">Employee UID <span style="color:var(--accent);font-size:11px;">(Auto-generated)</span></label>
+          <input type="text" class="form-control-dark" id="newStudentId" placeholder="EM-000001" readonly style="color:var(--accent); cursor:not-allowed; opacity:0.8;">
+        </div>
+      </div>
+      <div class="d-flex gap-2 mt-3 flex-wrap">
+        <button class="btn-primary-custom" onclick="addStudent()">
+          <i class="fas fa-user-plus"></i> Idagdag
+        </button>
+        <button class="btn-outline-custom" onclick="openImportModal()">
+          <i class="fas fa-file-import"></i> Import CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Student list -->
+    <div class="glass-card">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="section-title mb-0">Registered (<span id="studentCount">0</span>)</div>
+        <div class="search-box mb-0" style="width:180px;">
+          <i class="fas fa-magnifying-glass"></i>
+          <input type="text" class="form-control-dark" id="studentSearch" placeholder="Hanapin…" oninput="renderStudents()" style="font-size:13px; padding:8px 8px 8px 34px;">
+        </div>
+      </div>
+      <div id="studentList"></div>
+    </div>
+  </div>
+
+  <!-- ── REPORTS PAGE ── -->
+  <div class="page" id="page-reports">
+    <div class="page-heading">Reports</div>
+    <div class="page-sub">Attendance summary at analytics ng mga empleyado</div>
+
+    <div class="glass-card">
+      <div class="d-flex gap-2 flex-wrap mb-3">
+        <select class="form-control-dark" id="reportDate" style="width:auto; flex:1;" onchange="renderReport()">
+          <option value="">Lahat ng araw</option>
+        </select>
+        <button class="btn-accent-custom" onclick="exportCSV()">
+          <i class="fas fa-download"></i> Export CSV
+        </button>
+      </div>
+      <div class="table-responsive-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>UID</th>
+              <th>Department</th>
+              <th>Date</th>
+              <th>Time In</th>
+              <th>Status</th>
+              <th>Sync</th>
+            </tr>
+          </thead>
+          <tbody id="reportBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Summary by student -->
+    <div class="glass-card">
+      <div class="summary-header">
+        <div class="section-title mb-0">Attendance Summary per Employee</div>
+        <div id="summaryHeaderStats" class="d-flex gap-2 flex-wrap"></div>
+      </div>
+      <div id="summaryList"></div>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS PAGE ── -->
+  <div class="page" id="page-settings">
+    <div class="page-heading">Settings</div>
+    <div class="page-sub">I-configure ang system</div>
+
+    <div class="glass-card">
+      <div class="settings-group-title">Office Info</div>
+      <div class="row g-2">
+        <div class="col-12 col-sm-6">
+          <label class="form-label-dark">Office / Unit Name</label>
+          <input type="text" class="form-control-dark" id="setClassName" placeholder="Environment and Natural Resources Office" oninput="saveSetting('className', this.value); updateClassLabel()">
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label-dark">Agency / LGU Name</label>
+          <input type="text" class="form-control-dark" id="setSchoolName" placeholder="Victorias City Government" oninput="saveSetting('schoolName', this.value)">
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label-dark">Officer-in-Charge</label>
+          <input type="text" class="form-control-dark" id="setTeacher" placeholder="Engr. Santos" oninput="saveSetting('teacher', this.value)">
+        </div>
+      </div>
+
+      <div class="settings-group-title">Firebase (para sa online sync)</div>
+      <div class="row g-2">
+        <div class="col-12">
+          <label class="form-label-dark">Firebase Project ID</label>
+          <input type="text" class="form-control-dark" id="setFirebaseId" placeholder="my-attendance-app" oninput="saveSetting('firebaseId', this.value)">
+        </div>
+        <div class="col-12">
+          <label class="form-label-dark">Firebase API Key</label>
+          <input type="text" class="form-control-dark" id="setFirebaseKey" placeholder="AIza…" oninput="saveSetting('firebaseKey', this.value)">
+        </div>
+        <div class="col-12">
+          <div style="font-size:12px; color:var(--text-muted); padding:8px 12px; background:rgba(108,99,255,0.08); border-radius:8px;">
+            <i class="fas fa-info-circle me-1" style="color:var(--primary)"></i>
+            Firebase integration is ready — i-configure lang ang credentials mo at automatic na mag-si-sync. Currently using <strong style="color:var(--primary)">localStorage</strong> mode.
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group-title">Preferences</div>
+      <div class="settings-row">
+        <div class="settings-row-info">
+          <div class="label">Auto-sync kapag may internet</div>
+          <div class="sub">Awtomatikong mag-upload ng bagong records</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="togAutoSync" checked onchange="saveSetting('autoSync', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-info">
+          <div class="label">Sound notification sa scan</div>
+          <div class="sub">Mag-beep pag successful ang scan</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="togSound" checked onchange="saveSetting('sound', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-info">
+          <div class="label">Allow duplicate scan sa isang araw</div>
+          <div class="sub">Kung pwede mag-record ng time-out</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="togDuplicate" onchange="saveSetting('allowDuplicate', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="settings-group-title">Danger Zone</div>
+      <div class="danger-zone-box">
+        <button class="danger-btn-clear" onclick="clearLog()">
+          <div class="danger-btn-icon"><i class="fas fa-trash-can"></i></div>
+          <div class="danger-btn-text">
+            <span class="danger-btn-label">Clear Attendance Log</span>
+            <span class="danger-btn-sub">Burahin lahat ng recorded attendance</span>
+          </div>
+          <i class="fas fa-chevron-right danger-btn-arrow"></i>
+        </button>
+        <div class="danger-divider"></div>
+        <button class="danger-btn-reset" onclick="clearAll()">
+          <div class="danger-btn-icon danger-btn-icon-reset"><i class="fas fa-rotate-left"></i></div>
+          <div class="danger-btn-text">
+            <span class="danger-btn-label">Reset Everything</span>
+            <span class="danger-btn-sub">Burahin lahat — employees, logs, settings</span>
+          </div>
+          <i class="fas fa-chevron-right danger-btn-arrow"></i>
+        </button>
+      </div>
+
+      <div class="settings-group-title">About</div>
+      <div style="font-size:13px; color:var(--text-muted); line-height:1.8;">
+        <div><i class="fas fa-code me-1"></i> ENRO NFC Attendance System v1.0</div>
+        <div><i class="fas fa-database me-1"></i> Storage: localStorage (Firebase-ready)</div>
+        <div><i class="fas fa-mobile me-1"></i> NFC: Android Chrome (Web NFC API)</div>
+        <div><i class="fas fa-apple me-1"></i> iOS: Manual entry fallback</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main-content -->
+
+</div><!-- /scroll-area -->
+
+<!-- ══ BOTTOM NAV (Mobile) ═══════════════════════════════ -->
+<div class="bottom-nav">
+  <button class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard', this)">
+    <i class="fas fa-chart-pie"></i>
+    <span>Dashboard</span>
+  </button>
+  <button class="nav-item" id="nav-scan" onclick="showPage('scan', this)">
+    <i class="fas fa-wifi"></i>
+    <span>Scan</span>
+  </button>
+  <button class="nav-item" id="nav-log" onclick="showPage('log', this)">
+    <i class="fas fa-list-ul"></i>
+    <span>Log</span>
+  </button>
+  <button class="nav-item" id="nav-students" onclick="showPage('students', this)">
+    <i class="fas fa-id-badge"></i>
+    <span>Employees</span>
+  </button>
+  <button class="nav-item" id="nav-reports" onclick="showPage('reports', this)">
+    <i class="fas fa-chart-bar"></i>
+    <span>Reports</span>
+  </button>
+  <button class="nav-item" id="nav-settings" onclick="showPage('settings', this)">
+    <i class="fas fa-gear"></i>
+    <span>Settings</span>
+  </button>
+</div><!-- /bottom-nav -->
+
+</div><!-- /app-wrapper -->
+
+<!-- ══ TOAST CONTAINER ═══════════════════════════════════ -->
+<div class="toast-container-custom" id="toastContainer"></div>
+
+<!-- ══ MANUAL ENTRY MODAL ════════════════════════════════ -->
+<div class="modal fade modal-dark" id="manualModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-keyboard me-2" style="color:var(--primary)"></i>Manual Entry</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label-dark">Employee UID o NFC UID</label>
+        <input type="text" class="form-control-dark" id="manualInput" placeholder="EM-000001 o 04:AB:CD:EF"
+               onkeydown="if(event.key==='Enter') confirmManual()">
+        <div style="font-size:12px; color:var(--text-muted); margin-top:10px;">
+          <i class="fas fa-lightbulb me-1" style="color:var(--warning)"></i>
+          I-type ang Employee UID para mag-record ng attendance nang walang NFC.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline-custom" data-bs-dismiss="modal">Kanselahin</button>
+        <button class="btn-primary-custom" onclick="confirmManual()">
+          <i class="fas fa-check"></i> I-record
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ IMPORT MODAL ══════════════════════════════════════ -->
+<div class="modal fade modal-dark" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-file-import me-2" style="color:var(--accent)"></i>Import Students (CSV)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px; padding:10px; background:rgba(0,212,170,0.07); border-radius:8px; border:1px solid rgba(0,212,170,0.2);">
+          <strong style="color:var(--accent)">Format ng CSV:</strong><br>
+          <code style="font-size:12px; color:var(--text-secondary)">name,position,department,emptype<br>Juan dela Cruz,Specialist,ENRO,Regular<br>Maria Santos,Admin Aide,ENRO,Casual</code>
+          <div style="margin-top:6px; font-size:11px; color:var(--text-muted);"><i class="fas fa-info-circle me-1" style="color:var(--primary)"></i>Ang Employee UID ay awtomatikong mabubuo.</div>
+        </div>
+        <label class="form-label-dark">I-paste ang CSV data</label>
+        <textarea class="form-control-dark" id="csvInput" rows="6" placeholder="name,position,department,emptype&#10;Juan dela Cruz,Specialist,ENRO,Regular" style="resize:vertical; font-family:var(--font-mono); font-size:12px;"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline-custom" data-bs-dismiss="modal">Kanselahin</button>
+        <button class="btn-accent-custom" onclick="importCSV()">
+          <i class="fas fa-upload"></i> I-import
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT STUDENT MODAL ════════════════════════════════ -->
+<div class="modal fade modal-dark" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-pen me-2" style="color:var(--primary)"></i>I-edit ang Employee</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editIdx">
+        <label class="form-label-dark">Pangalan</label>
+        <input type="text" class="form-control-dark mb-3" id="editName">
+        <label class="form-label-dark">Employee UID</label>
+        <input type="text" class="form-control-dark mb-3" id="editId" readonly style="color:var(--accent); cursor:not-allowed; opacity:0.8;">
+        <label class="form-label-dark">Position</label>
+        <input type="text" class="form-control-dark mb-3" id="editSection">
+        <label class="form-label-dark">Department</label>
+        <input type="text" class="form-control-dark mb-3" id="editDepartment">
+        <label class="form-label-dark">Employee Type</label>
+        <select class="form-control-dark" id="editEmpType">
+          <option value="Regular">Regular</option>
+          <option value="Casual">Casual</option>
+          <option value="Job Order">Job Order</option>
+          <option value="Contractual">Contractual</option>
+          <option value="Seconded">Seconded</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline-custom" data-bs-dismiss="modal">Kanselahin</button>
+        <button class="btn-primary-custom" onclick="saveEdit()">
+          <i class="fas fa-floppy-disk"></i> I-save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONFIRMATION MODAL ═════════════════════════════════ -->
+<div class="modal fade modal-dark" id="confirmModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+    <div class="modal-content" style="border-radius:20px; overflow:hidden;">
+      <div class="modal-body" style="padding:0;">
+        <!-- Icon area -->
+        <div id="confirmIconArea" style="padding:32px 24px 20px; text-align:center; background:linear-gradient(180deg, rgba(255,71,87,0.08) 0%, transparent 100%);">
+          <div id="confirmIconCircle" style="width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;">
+            <i id="confirmIcon" class="fas fa-triangle-exclamation"></i>
+          </div>
+          <div id="confirmTitle" style="font-size:19px;font-weight:700;color:var(--text-primary);margin-bottom:8px;"></div>
+          <div id="confirmMessage" style="font-size:13px;color:var(--text-muted);line-height:1.6;"></div>
+        </div>
+        <!-- Warning detail box -->
+        <div id="confirmDetailBox" style="margin:0 20px 20px;padding:12px 14px;border-radius:12px;font-size:12px;color:var(--warning);background:rgba(255,165,2,0.08);border:1px solid rgba(255,165,2,0.2);display:none;">
+          <i class="fas fa-exclamation-circle me-2"></i><span id="confirmDetail"></span>
+        </div>
+        <!-- Buttons -->
+        <div style="display:flex;gap:10px;padding:0 20px 24px;">
+          <button id="confirmCancelBtn" class="btn-outline-custom" style="flex:1;justify-content:center;padding:12px;" data-bs-dismiss="modal">
+            <i class="fas fa-xmark me-1"></i> Kanselahin
+          </button>
+          <button id="confirmOkBtn" style="flex:1;padding:12px;border-radius:12px;border:none;font-family:var(--font-main);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;">
+            <i id="confirmOkIcon" class="fas fa-check"></i>
+            <span id="confirmOkLabel">Kumpirmahin</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NFC ERROR MODAL ════════════════════════════════════ -->
+<div class="modal fade modal-dark" id="nfcErrorModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+    <div class="modal-content" style="border-radius:20px; overflow:hidden;">
+      <div class="modal-body" style="padding:0;">
+        <div style="padding:32px 24px 20px; text-align:center; background:linear-gradient(180deg, rgba(255,71,87,0.08) 0%, transparent 100%);">
+          <div style="width:72px;height:72px;border-radius:50%;background:rgba(255,71,87,0.15);border:2px solid rgba(255,71,87,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;color:var(--danger);">
+            <i class="fas fa-wifi" style="position:relative;">
+            </i>
+          </div>
+          <div style="font-size:19px;font-weight:700;color:var(--text-primary);margin-bottom:8px;">NFC Error</div>
+          <div id="nfcErrorMsg" style="font-size:13px;color:var(--text-muted);line-height:1.6;"></div>
+        </div>
+        <div style="margin:0 20px 16px;padding:12px 14px;border-radius:12px;font-size:12px;color:var(--text-muted);background:rgba(108,99,255,0.06);border:1px solid var(--dark-border);">
+          <div style="font-weight:600;color:var(--text-secondary);margin-bottom:6px;"><i class="fas fa-lightbulb me-1" style="color:var(--warning)"></i> Mga solusyon:</div>
+          <ul style="margin:0;padding-left:16px;line-height:2;">
+            <li>I-allow ang NFC permission sa browser</li>
+            <li>I-on ang NFC sa Settings ng telepono</li>
+            <li>Gamitin ang <strong style="color:var(--accent)">Manual Entry</strong> bilang fallback</li>
+          </ul>
+        </div>
+        <div style="display:flex;gap:10px;padding:0 20px 24px;">
+          <button class="btn-outline-custom" style="flex:1;justify-content:center;padding:12px;" data-bs-dismiss="modal">
+            <i class="fas fa-xmark me-1"></i> Isara
+          </button>
+          <button class="btn-primary-custom" style="flex:1;justify-content:center;" data-bs-dismiss="modal" onclick="openManualModal()">
+            <i class="fas fa-keyboard me-1"></i> Manual Entry
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DATA LAYER  (swap these functions for Firebase later)
+// ═══════════════════════════════════════════════════════════
+const DB = {
+  get students() { return JSON.parse(localStorage.getItem('att_students') || '[]'); },
+  set students(v) { localStorage.setItem('att_students', JSON.stringify(v)); },
+  get log() { return JSON.parse(localStorage.getItem('att_log') || '[]'); },
+  set log(v) { localStorage.setItem('att_log', JSON.stringify(v)); },
+  get settings() { return JSON.parse(localStorage.getItem('att_settings') || '{}'); },
+  set settings(v) { localStorage.setItem('att_settings', JSON.stringify(v)); }
+};
+
+// ── Settings helpers ──
+function getSetting(key, def='') { return DB.settings[key] !== undefined ? DB.settings[key] : def; }
+function saveSetting(key, val) {
+  const s = DB.settings; s[key] = val; DB.settings = s;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════
+function today() {
+  return new Date().toLocaleDateString('en-PH', { year:'numeric', month:'2-digit', day:'2-digit' });
+}
+function timeNow() {
+  return new Date().toLocaleTimeString('en-PH', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
+}
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' });
+}
+function initials(name) {
+  return name.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+const AVATAR_COLORS = ['avatar-purple','avatar-teal','avatar-pink','avatar-amber','avatar-green'];
+function avatarColor(name) { let h=0; for(let c of name)h+=c.charCodeAt(0); return AVATAR_COLORS[h%AVATAR_COLORS.length]; }
+
+function beep() {
+  if (!getSetting('sound', true)) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.setValueAtTime(0.3, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.3);
+    o.start(); o.stop(ctx.currentTime+0.3);
+  } catch(e){}
+}
+
+// ── Toast ──
+function toast(msg, type='info', duration=3000) {
+  const icons = { success:'fa-circle-check', error:'fa-circle-xmark', warning:'fa-triangle-exclamation', info:'fa-circle-info' };
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.innerHTML = `<i class="fas ${icons[type]||icons.info}" style="color:var(--${type==='info'?'primary':type==='error'?'danger':type})"></i>${msg}`;
+  const container = document.getElementById('toastContainer');
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity 0.3s'; setTimeout(()=>el.remove(), 300); }, duration);
+}
+
+// ── Confirmation Modal ──
+function showConfirm({ title, message, detail='', icon='fa-triangle-exclamation', type='danger', okLabel='Kumpirmahin', okIcon='fa-check', onConfirm }) {
+  const colors = {
+    danger:  { bg:'rgba(255,71,87,0.15)',  border:'rgba(255,71,87,0.3)',  color:'var(--danger)',  btn:'linear-gradient(135deg,#ff4757,#c0392b)', btnHover:'0 4px 15px rgba(255,71,87,0.45)' },
+    warning: { bg:'rgba(255,165,2,0.15)', border:'rgba(255,165,2,0.3)', color:'var(--warning)', btn:'linear-gradient(135deg,#ffa502,#e67e22)', btnHover:'0 4px 15px rgba(255,165,2,0.45)' },
+    primary: { bg:'rgba(108,99,255,0.15)', border:'rgba(108,99,255,0.3)', color:'var(--primary)', btn:'linear-gradient(135deg,var(--primary),var(--primary-dark))', btnHover:'0 4px 15px rgba(108,99,255,0.45)' },
+  };
+  const c = colors[type] || colors.danger;
+
+  document.getElementById('confirmIconCircle').style.cssText = `width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;background:${c.bg};border:2px solid ${c.border};color:${c.color};`;
+  document.getElementById('confirmIcon').className = `fas ${icon}`;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMessage').textContent = message;
+
+  const detailBox = document.getElementById('confirmDetailBox');
+  if (detail) {
+    document.getElementById('confirmDetail').textContent = detail;
+    detailBox.style.display = 'block';
+  } else {
+    detailBox.style.display = 'none';
+  }
+
+  const okBtn = document.getElementById('confirmOkBtn');
+  okBtn.style.cssText = `flex:1;padding:12px;border-radius:12px;border:none;font-family:var(--font-main);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;background:${c.btn};color:white;box-shadow:0 4px 15px rgba(0,0,0,0.2);`;
+  document.getElementById('confirmOkIcon').className = `fas ${okIcon}`;
+  document.getElementById('confirmOkLabel').textContent = okLabel;
+
+  // Remove old listener, add new
+  const newBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newBtn, okBtn);
+  document.getElementById('confirmOkIcon').className = `fas ${okIcon}`;
+  document.getElementById('confirmOkLabel').textContent = okLabel;
+  newBtn.addEventListener('click', () => {
+    bootstrap.Modal.getInstance(document.getElementById('confirmModal'))?.hide();
+    if (onConfirm) onConfirm();
+  });
+
+  new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+// ── NFC Error Modal ──
+function showNfcError(msg) {
+  document.getElementById('nfcErrorMsg').textContent = msg;
+  new bootstrap.Modal(document.getElementById('nfcErrorModal')).show();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════
+let currentPage = 'dashboard';
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  currentPage = name;
+
+  // Mobile nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const mobileNav = document.getElementById('nav-'+name);
+  if (mobileNav) mobileNav.classList.add('active');
+
+  // Sidebar
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  if (el && el.classList.contains('sidebar-item')) el.classList.add('active');
+  else {
+    // sync sidebar
+    document.querySelectorAll('.sidebar-item').forEach(s => {
+      if (s.getAttribute('onclick') && s.getAttribute('onclick').includes("'"+name+"'")) s.classList.add('active');
+    });
+  }
+
+  // Refresh data on tab switch
+  if (name==='dashboard') renderDashboard();
+  if (name==='log') { renderLog(); populateDateFilters(); }
+  if (name==='scan') renderTodayScan();
+  if (name==='students') { renderStudents(); refreshNewUID(); }
+  if (name==='reports') { renderReport(); populateDateFilters(); populateReportDates(); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NETWORK
+// ═══════════════════════════════════════════════════════════
+function updateNet() {
+  const online = navigator.onLine;
+  const badge = document.getElementById('netBadge');
+  const text = document.getElementById('netText');
+  badge.className = 'net-badge ' + (online ? 'online' : 'offline');
+  text.textContent = online ? 'Online' : 'Offline';
+}
+window.addEventListener('online', () => {
+  updateNet();
+  toast('Konektado na!', 'success');
+  if (getSetting('autoSync', true)) syncData();
+});
+window.addEventListener('offline', () => {
+  updateNet();
+  toast('Walang internet — offline mode', 'warning');
+});
+updateNet();
+
+function updatePendingAlert() {
+  const p = DB.log.filter(r => !r.synced).length;
+  const el = document.getElementById('pendingAlert');
+  document.getElementById('pendingAlertCount').textContent = p;
+  el.style.display = p > 0 ? 'flex' : 'none';
+  document.getElementById('statPending').textContent = p;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ATTENDANCE LOGIC
+// ═══════════════════════════════════════════════════════════
+function recordAttendance(uid, name, section) {
+  const todayStr = today();
+  const allowDup = getSetting('allowDuplicate', false);
+  const existing = DB.log.find(r => r.uid === uid && r.date === todayStr);
+
+  if (existing && !allowDup) {
+    setScanState('duplicate', `${name}`, 'Naka-log na ngayon');
+    toast(`⚠️ ${name} — naka-log na ngayon!`, 'warning');
+    return;
+  }
+
+  const entry = {
+    id: Date.now(),
+    uid, name,
+    section: section || '—',
+    date: todayStr,
+    time: timeNow(),
+    synced: false,
+    type: (existing && allowDup) ? 'OUT' : 'IN'
+  };
+
+  const log = DB.log;
+  log.unshift(entry);
+  DB.log = log;
+
+  beep();
+  setScanState('success', `✓ ${name}`, `${entry.type} — ${entry.time}`);
+  toast(`${name} — ${entry.type}`, 'success');
+  updatePendingAlert();
+  renderTodayScan();
+  updateDashboardStats();
+
+  if (navigator.onLine && getSetting('autoSync', true)) {
+    setTimeout(syncData, 800);
+  }
+}
+
+function lookupStudent(uid) {
+  return DB.students.find(s => s.id.toLowerCase() === uid.toLowerCase().trim());
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NFC SCANNING
+// ═══════════════════════════════════════════════════════════
+let scanning = false;
+let nfcReader = null;
+
+function setScanState(state, text='', sub='') {
+  const ring = document.getElementById('scanRing');
+  const icon = document.getElementById('scanIcon');
+  const label = document.getElementById('scanLabel');
+  const statusText = document.getElementById('scanStatusText');
+  const statusSub = document.getElementById('scanStatusSub');
+
+  ring.className = 'scan-ring ' + state;
+  statusText.textContent = text;
+  statusSub.textContent = sub;
+
+  const stateMap = {
+    '': { icon:'fa-wifi', label:'TAP' },
+    scanning: { icon:'fa-wifi', label:'…' },
+    success: { icon:'fa-circle-check', label:'OK' },
+    duplicate: { icon:'fa-circle-exclamation', label:'DUP' },
+    error: { icon:'fa-circle-xmark', label:'ERR' }
+  };
+  const s = stateMap[state] || stateMap[''];
+  icon.className = `fas ${s.icon}`;
+  label.textContent = s.label;
+
+  if (state === 'success' || state === 'duplicate' || state === 'error') {
+    setTimeout(() => resetScanState(), 3000);
+  }
+}
+
+function resetScanState() {
+  setScanState('', 'Ready to scan', 'Pindutin ang icon para simulan');
+}
+
+async function startScan() {
+  if (scanning) return;
+  if (!('NDEFReader' in window)) {
+    toast('NFC hindi available — gumagamit ng manual entry fallback', 'warning');
+    openManualModal();
+    return;
+  }
+  scanning = true;
+  setScanState('scanning', 'Naghihintay ng NFC…', 'Ilapat ang card sa likod ng telepono');
+  try {
+    nfcReader = new NDEFReader();
+    await nfcReader.scan();
+    toast('NFC active — ilapat na ang card!', 'info');
+    nfcReader.addEventListener('reading', ({ serialNumber }) => {
+      const uid = serialNumber || 'uid-' + Date.now();
+      const student = lookupStudent(uid);
+      const name = student ? student.name : 'Unknown';
+      const section = student ? student.section : '—';
+      recordAttendance(uid, name, section);
+    });
+    nfcReader.addEventListener('readingerror', () => {
+      toast('Hindi mabasa ang NFC. Subukan ulit.', 'error');
+    });
+  } catch(e) {
+    scanning = false;
+    setScanState('error', 'NFC Error', e.message);
+    showNfcError(e.message);
+  }
+}
+
+function stopScan() {
+  scanning = false;
+  nfcReader = null;
+  resetScanState();
+  toast('Scan stopped.', 'info');
+}
+
+// ── Manual entry ──
+function openManualModal() {
+  document.getElementById('manualInput').value = '';
+  new bootstrap.Modal(document.getElementById('manualModal')).show();
+  setTimeout(() => document.getElementById('manualInput').focus(), 400);
+}
+function confirmManual() {
+  const val = document.getElementById('manualInput').value.trim();
+  if (!val) return;
+  const student = lookupStudent(val);
+  const name = student ? student.name : val;
+  const section = student ? student.section : '—';
+  recordAttendance(val, name, section);
+  bootstrap.Modal.getInstance(document.getElementById('manualModal'))?.hide();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SYNC (localStorage → Firebase placeholder)
+// ═══════════════════════════════════════════════════════════
+async function syncData() {
+  const pending = DB.log.filter(r => !r.synced);
+  if (!pending.length) { toast('Walang pending records.', 'info'); return; }
+  if (!navigator.onLine) { toast('Walang internet. Mag-sync later.', 'warning'); return; }
+
+  const fid = getSetting('firebaseId','');
+  const fkey = getSetting('firebaseKey','');
+
+  if (!fid || !fkey) {
+    // Demo: mark as synced
+    const log = DB.log.map(r => ({ ...r, synced: true }));
+    DB.log = log;
+    updatePendingAlert();
+    renderTodayScan();
+    toast(`✓ ${pending.length} records "synced" (demo mode)`, 'success');
+    return;
+  }
+
+  // FIREBASE SYNC GOES HERE
+  // When you add Firebase config, replace this block with Firestore batch writes
+  try {
+    // Placeholder: call your Firebase REST API
+    const url = `https://firestore.googleapis.com/v1/projects/${fid}/databases/(default)/documents/attendance`;
+    // ... actual firebase calls ...
+    const log = DB.log.map(r => ({ ...r, synced: true }));
+    DB.log = log;
+    updatePendingAlert();
+    toast(`✓ ${pending.length} records na-sync sa Firebase!`, 'success');
+  } catch(e) {
+    toast('Sync error: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ═══════════════════════════════════════════════════════════
+function renderTodayScan() {
+  const todayStr = today();
+  const records = DB.log.filter(r => r.date === todayStr);
+  document.getElementById('todayCount').textContent = records.length;
+  const el = document.getElementById('todayScanList');
+  if (!records.length) {
+    el.innerHTML = `<div class="empty-state"><i class="fas fa-wifi"></i><p>Wala pang records ngayon.</p></div>`;
+    return;
+  }
+  el.innerHTML = records.map(r => `
+    <div class="log-item">
+      <div class="avatar ${avatarColor(r.name)}">${initials(r.name)}</div>
+      <div style="flex:1; min-width:0;">
+        <div class="log-name">${r.name}</div>
+        <div class="log-meta">${r.uid} · ${r.section}</div>
+      </div>
+      <div class="d-flex flex-column align-items-end gap-1">
+        <span class="badge-${r.type==='OUT'?'out':'in'}">${r.type||'IN'}</span>
+        <div class="log-time">${r.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderLog() {
+  const q = (document.getElementById('logSearch')?.value||'').toLowerCase();
+  const dateF = document.getElementById('logFilterDate')?.value || '';
+  let records = DB.log;
+  if (q) records = records.filter(r => r.name.toLowerCase().includes(q) || r.uid.toLowerCase().includes(q) || r.section.toLowerCase().includes(q));
+  if (dateF) records = records.filter(r => r.date === dateF);
+  const el = document.getElementById('logList');
+  if (!records.length) {
+    el.innerHTML = `<div class="empty-state"><i class="fas fa-list-ul"></i><p>Walang records na nahanap.</p></div>`;
+    return;
+  }
+  el.innerHTML = records.map(r => `
+    <div class="log-item">
+      <div class="avatar ${avatarColor(r.name)}">${initials(r.name)}</div>
+      <div style="flex:1; min-width:0;">
+        <div class="log-name">${r.name}</div>
+        <div class="log-meta">${r.uid} · ${r.section} · ${r.date}</div>
+      </div>
+      <div class="d-flex flex-column align-items-end gap-1" style="flex-shrink:0;">
+        <span class="${r.synced ? 'badge-synced' : 'badge-pending'}">${r.synced ? '✓ Synced' : '⏳ Pending'}</span>
+        <div class="log-time">${r.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderStudents() {
+  const q = (document.getElementById('studentSearch')?.value||'').toLowerCase();
+  let students = DB.students;
+  if (q) students = students.filter(s => s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q) || (s.section||'').toLowerCase().includes(q) || (s.department||'').toLowerCase().includes(q));
+  document.getElementById('studentCount').textContent = DB.students.length;
+  const el = document.getElementById('studentList');
+  if (!students.length) {
+    el.innerHTML = `<div class="empty-state"><i class="fas fa-id-badge"></i><p>Walang registered employees.</p></div>`;
+    return;
+  }
+
+  const empTypeStyles = {
+    'Regular':     { bg:'rgba(46,213,115,0.13)',  color:'var(--success)',       border:'rgba(46,213,115,0.3)' },
+    'Casual':      { bg:'rgba(108,99,255,0.13)',  color:'var(--primary-light)', border:'rgba(108,99,255,0.3)' },
+    'Job Order':   { bg:'rgba(255,165,2,0.13)',   color:'var(--warning)',        border:'rgba(255,165,2,0.3)' },
+    'Contractual': { bg:'rgba(0,212,170,0.13)',   color:'var(--accent)',         border:'rgba(0,212,170,0.3)' },
+    'Seconded':    { bg:'rgba(255,71,87,0.13)',   color:'var(--danger)',         border:'rgba(255,71,87,0.3)' },
+  };
+
+  el.innerHTML = students.map((s) => {
+    const realIdx = DB.students.findIndex(x => x.id === s.id);
+    const et = empTypeStyles[s.empType||'Regular'] || empTypeStyles['Casual'];
+    return `
+    <div class="student-card">
+      <div class="avatar ${avatarColor(s.name)}">${initials(s.name)}</div>
+      <div class="student-info" style="min-width:0;">
+        <div class="student-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:${et.bg};color:${et.color};border:1px solid ${et.border};white-space:nowrap;">${s.empType||'Regular'}</span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--accent);font-weight:600;">${s.id}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0;margin-left:8px;">
+        <button class="btn-outline-custom" onclick="openEdit(${realIdx})" style="padding:8px 12px;" title="I-edit">
+          <i class="fas fa-pen" style="font-size:13px;"></i>
+        </button>
+        <button class="btn-danger-custom" onclick="removeStudent(${realIdx})" style="padding:8px 12px;" title="Burahin">
+          <i class="fas fa-trash" style="font-size:13px;"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDashboard() {
+  const todayStr = today();
+  const todayLogs = DB.log.filter(r => r.date === todayStr);
+  const total = DB.students.length;
+  const present = [...new Set(todayLogs.map(r => r.uid))].length;
+  const absent = Math.max(0, total - present);
+  const rate = total > 0 ? Math.round((present/total)*100) : 0;
+
+  document.getElementById('statPresent').textContent = present;
+  document.getElementById('statAbsent').textContent = absent;
+  document.getElementById('statRate').textContent = rate + '%';
+  updatePendingAlert();
+
+  // Date
+  document.getElementById('dashDate').textContent = new Date().toLocaleDateString('en-PH', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  document.getElementById('classLabel').textContent = getSetting('className','ENRO') || 'ENRO';
+
+  // Weekly chart
+  renderWeekChart();
+
+  // Recent scans
+  const recent = DB.log.slice(0, 6);
+  const el = document.getElementById('recentScans');
+  if (!recent.length) {
+    el.innerHTML = `<div class="empty-state"><i class="fas fa-wifi"></i><p>Wala pang scans.</p></div>`;
+    return;
+  }
+  el.innerHTML = recent.map(r => `
+    <div class="log-item">
+      <div class="avatar ${avatarColor(r.name)}">${initials(r.name)}</div>
+      <div style="flex:1; min-width:0;">
+        <div class="log-name">${r.name}</div>
+        <div class="log-meta">${r.date} · ${r.section}</div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge-${r.type==='OUT'?'out':'in'}">${r.type||'IN'}</span>
+        <div class="log-time">${r.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+function updateDashboardStats() {
+  if (currentPage === 'dashboard') renderDashboard();
+}
+
+function renderWeekChart() {
+  const days = [];
+  for (let i=6; i>=0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    days.push({
+      label: d.toLocaleDateString('en-PH', { weekday:'short' }).slice(0,2),
+      date: d.toLocaleDateString('en-PH', { year:'numeric', month:'2-digit', day:'2-digit' })
+    });
+  }
+  const counts = days.map(d => DB.log.filter(r => r.date===d.date).length);
+  const totalLogs = counts.reduce((a,b)=>a+b,0);
+  const max = Math.max(1, ...counts);
+  document.getElementById('weekChart').innerHTML = days.map((d, i) => {
+    const cnt = counts[i];
+    const isToday = d.date === today();
+    const isEmpty = totalLogs === 0;
+    const h = isEmpty ? 4 : Math.max(cnt > 0 ? 8 : 0, Math.round((cnt/max)*72));
+    const barClass = (isEmpty || cnt === 0) ? 'chart-bar empty-bar' : 'chart-bar';
+    return `<div class="chart-bar-col">
+      <div class="${barClass}" style="height:${h}px; opacity:${isToday?1:0.45};"></div>
+      <div class="chart-bar-lbl" style="color:${isToday?'var(--primary-light)':'var(--text-muted)'}">${d.label}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderReport() {
+  const dateF = document.getElementById('reportDate')?.value || '';
+  let records = DB.log;
+  if (dateF) records = records.filter(r => r.date === dateF);
+  const tbody = document.getElementById('reportBody');
+  if (!records.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:32px; color:var(--text-muted);">Walang records.</td></tr>`;
+  } else {
+    tbody.innerHTML = records.map(r => `
+      <tr>
+        <td><div class="d-flex align-items-center gap-2"><div class="avatar ${avatarColor(r.name)}" style="width:28px;height:28px;font-size:11px;">${initials(r.name)}</div>${r.name}</div></td>
+        <td class="mono">${r.uid}</td>
+        <td>${r.section}</td>
+        <td class="mono">${r.date}</td>
+        <td class="mono">${r.time}</td>
+        <td><span class="badge-${r.type==='OUT'?'out':'in'}">${r.type||'IN'}</span></td>
+        <td><span class="${r.synced?'badge-synced':'badge-pending'}">${r.synced?'✓':'⏳'}</span></td>
+      </tr>`).join('');
+  }
+
+  // Summary per student
+  const summEl = document.getElementById('summaryList');
+  const total = DB.students.length;
+  if (!total) { summEl.innerHTML = `<div class="empty-state"><i class="fas fa-id-badge"></i><p>Walang registered employees.</p></div>`; return; }
+
+  const allDates = [...new Set(DB.log.map(r=>r.date))];
+  const totalDays = allDates.length || 1;
+
+  summEl.innerHTML = DB.students.map(s => {
+    const count = [...new Set(DB.log.filter(r=>r.uid===s.id).map(r=>r.date))].length;
+    const rate = Math.round((count/totalDays)*100);
+    const rateClass = rate>=80?'rate-high':rate>=60?'rate-mid':'rate-low';
+    const dept = s.department || s.section || '—';
+    return `
+    <div class="student-card">
+      <div class="avatar ${avatarColor(s.name)}">${initials(s.name)}</div>
+      <div class="student-info">
+        <div class="student-name">${s.name}</div>
+        <div class="student-dept">${dept}</div>
+        <div class="att-progress ${rateClass}"><div class="att-progress-bar" style="width:${rate}%"></div></div>
+        <div class="days-chip"><i class="fas fa-calendar-check"></i> ${count} / ${totalDays} days</div>
+      </div>
+      <div class="rate-badge ${rateClass}">
+        <span>${rate}</span>
+        <span class="rate-unit">%</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Header stats
+  const statsEl = document.getElementById('summaryHeaderStats');
+  if (statsEl) {
+    const perfect = DB.students.filter(s => {
+      const c = [...new Set(DB.log.filter(r=>r.uid===s.id).map(r=>r.date))].length;
+      return c >= totalDays;
+    }).length;
+    const atRisk = DB.students.filter(s => {
+      const c = [...new Set(DB.log.filter(r=>r.uid===s.id).map(r=>r.date))].length;
+      return Math.round((c/totalDays)*100) < 60;
+    }).length;
+    statsEl.innerHTML = `
+      <div class="summary-stat-pill"><i class="fas fa-users" style="font-size:10px"></i> <span>${total}</span> empleyado</div>
+      <div class="summary-stat-pill" style="color:var(--success);border-color:rgba(46,213,115,0.2);background:rgba(46,213,115,0.08)"><i class="fas fa-circle-check" style="font-size:10px;color:var(--success)"></i> <span style="color:var(--success)">${perfect}</span> perfect</div>
+      ${atRisk>0?`<div class="summary-stat-pill" style="color:var(--danger);border-color:rgba(255,71,87,0.2);background:rgba(255,71,87,0.08)"><i class="fas fa-circle-exclamation" style="font-size:10px;color:var(--danger)"></i> <span style="color:var(--danger)">${atRisk}</span> at risk</div>`:''}
+    `;
+  }
+}
+
+function populateDateFilters() {
+  const dates = [...new Set(DB.log.map(r=>r.date))].sort().reverse();
+  const opts = '<option value="">Lahat ng araw</option>' + dates.map(d=>`<option>${d}</option>`).join('');
+  const f = document.getElementById('logFilterDate');
+  const cur = f?.value;
+  if (f) { f.innerHTML = opts; f.value = cur; }
+}
+function populateReportDates() {
+  const dates = [...new Set(DB.log.map(r=>r.date))].sort().reverse();
+  const f = document.getElementById('reportDate');
+  if (f) f.innerHTML = '<option value="">Lahat ng araw</option>' + dates.map(d=>`<option>${d}</option>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STUDENTS CRUD
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  EMPLOYEE UID GENERATOR
+// ═══════════════════════════════════════════════════════════
+function generateUID() {
+  const students = DB.students;
+  if (!students.length) return 'EM-000001';
+  // Extract all numeric parts from existing UIDs
+  const nums = students.map(s => {
+    const m = s.id.match(/EM-(\d+)/);
+    return m ? parseInt(m[1]) : 0;
+  });
+  const maxNum = Math.max(...nums);
+  return 'EM-' + String(maxNum + 1).padStart(6, '0');
+}
+
+// Auto-fill UID when employee page is shown
+function refreshNewUID() {
+  const el = document.getElementById('newStudentId');
+  if (el) el.value = generateUID();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EMPLOYEES CRUD
+// ═══════════════════════════════════════════════════════════
+function addStudent() {
+  const name = document.getElementById('newName').value.trim();
+  const position = document.getElementById('newPosition').value.trim();
+  const department = document.getElementById('newDepartment').value.trim();
+  const empType = document.getElementById('newEmpType').value;
+  if (!name) { toast('Kailangan ng pangalan ng employee.', 'error'); return; }
+  const id = generateUID();
+  const students = DB.students;
+  students.push({ name, id, section: position, department, empType });
+  DB.students = students;
+  document.getElementById('newName').value = '';
+  document.getElementById('newPosition').value = '';
+  document.getElementById('newDepartment').value = '';
+  document.getElementById('newEmpType').value = 'Regular';
+  document.getElementById('newStudentId').value = generateUID();
+  renderStudents();
+  toast(`${name} naidagdag na! (${id})`, 'success');
+}
+
+function removeStudent(i) {
+  const s = DB.students;
+  const emp = s[i];
+  if (!emp) return;
+  showConfirm({
+    title: 'Burahin ang Employee?',
+    message: `Si ${emp.name} ay matatanggal sa listahan ng mga empleyado.`,
+    detail: 'Hindi na mababawi ang pagburahing ito.',
+    icon: 'fa-user-minus',
+    type: 'danger',
+    okLabel: 'Burahin',
+    okIcon: 'fa-trash',
+    onConfirm: () => {
+      s.splice(i, 1); DB.students = s;
+      renderStudents();
+      toast('Employee removed.', 'info');
+    }
+  });
+}
+
+function openEdit(i) {
+  const s = DB.students[i];
+  document.getElementById('editIdx').value = i;
+  document.getElementById('editName').value = s.name;
+  document.getElementById('editId').value = s.id;
+  document.getElementById('editSection').value = s.section || '';
+  document.getElementById('editDepartment').value = s.department || '';
+  document.getElementById('editEmpType').value = s.empType || 'Regular';
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+function saveEdit() {
+  const i = +document.getElementById('editIdx').value;
+  const s = DB.students;
+  s[i].name = document.getElementById('editName').value.trim();
+  s[i].id = document.getElementById('editId').value.trim();
+  s[i].section = document.getElementById('editSection').value.trim();
+  s[i].department = document.getElementById('editDepartment').value.trim();
+  s[i].empType = document.getElementById('editEmpType').value;
+  DB.students = s;
+  renderStudents();
+  bootstrap.Modal.getInstance(document.getElementById('editModal'))?.hide();
+  toast('Employee updated!', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  IMPORT / EXPORT
+// ═══════════════════════════════════════════════════════════
+function openImportModal() {
+  document.getElementById('csvInput').value = '';
+  new bootstrap.Modal(document.getElementById('importModal')).show();
+}
+function importCSV() {
+  const raw = document.getElementById('csvInput').value.trim();
+  if (!raw) return;
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  let added = 0;
+  const students = DB.students;
+  lines.forEach(line => {
+    if (line.toLowerCase().startsWith('name')) return; // skip header
+    const parts = line.split(',').map(p=>p.trim());
+    const [name, position, department, empType] = parts;
+    if (name) {
+      const id = 'EM-' + String(students.length + 1).padStart(6, '0');
+      students.push({ name, id, section: position||'—', department: department||'ENRO', empType: empType||'Regular' });
+      added++;
+    }
+  });
+  DB.students = students;
+  renderStudents();
+  document.getElementById('newStudentId').value = generateUID();
+  bootstrap.Modal.getInstance(document.getElementById('importModal'))?.hide();
+  toast(`${added} employees imported!`, 'success');
+}
+
+function exportCSV() {
+  const records = DB.log;
+  if (!records.length) { toast('Walang data para i-export.', 'warning'); return; }
+  const header = 'Name,UID,Department,Date,Time,Type,Synced';
+  const rows = records.map(r => `"${r.name}","${r.uid}","${r.section}","${r.date}","${r.time}","${r.type||'IN'}","${r.synced}"`);
+  const csv = [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `enro_attendance_${today().replace(/\//g,'-')}.csv`;
+  a.click();
+  toast('CSV exported!', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DANGER ZONE
+// ═══════════════════════════════════════════════════════════
+function clearLog() {
+  showConfirm({
+    title: 'I-clear ang Attendance Log?',
+    message: 'Lahat ng recorded attendance ay mabubura at hindi na mababawi pa.',
+    detail: 'Kasama dito ang lahat ng IN/OUT records ng mga empleyado.',
+    icon: 'fa-trash-can',
+    type: 'danger',
+    okLabel: 'I-clear',
+    okIcon: 'fa-trash',
+    onConfirm: () => {
+      DB.log = [];
+      renderLog(); renderTodayScan(); updatePendingAlert(); renderDashboard();
+      toast('Attendance log cleared.', 'info');
+    }
+  });
+}
+function clearAll() {
+  showConfirm({
+    title: 'I-reset ang Lahat ng Data?',
+    message: 'Mabubura ang lahat — mga empleyado, attendance logs, at settings.',
+    detail: 'Permanente itong pagbabago. Hindi na mababawi ang lahat ng data.',
+    icon: 'fa-circle-exclamation',
+    type: 'danger',
+    okLabel: 'I-reset Lahat',
+    okIcon: 'fa-rotate-left',
+    onConfirm: () => {
+      localStorage.removeItem('att_students');
+      localStorage.removeItem('att_log');
+      localStorage.removeItem('att_settings');
+      location.reload();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+function updateClassLabel() {
+  const label = getSetting('className','ENRO') || 'ENRO';
+  document.getElementById('classLabel').textContent = label;
+}
+
+function loadSettings() {
+  const s = DB.settings;
+  if (s.className) document.getElementById('setClassName').value = s.className;
+  if (s.schoolName) document.getElementById('setSchoolName').value = s.schoolName;
+  if (s.teacher) document.getElementById('setTeacher').value = s.teacher;
+  if (s.firebaseId) document.getElementById('setFirebaseId').value = s.firebaseId;
+  if (s.firebaseKey) document.getElementById('setFirebaseKey').value = s.firebaseKey;
+  if (s.autoSync !== undefined) document.getElementById('togAutoSync').checked = s.autoSync;
+  if (s.sound !== undefined) document.getElementById('togSound').checked = s.sound;
+  if (s.allowDuplicate !== undefined) document.getElementById('togDuplicate').checked = s.allowDuplicate;
+}
+
+// No demo data — start empty
+function seedDemo() {
+  // intentionally empty
+}
+
+// One-time wipe: clear any old demo/hardcoded data left in localStorage.
+// Runs once, marks itself so it never runs again on subsequent loads.
+(function clearLegacyDemoData() {
+  if (!localStorage.getItem('enro_wiped_v1')) {
+    localStorage.removeItem('att_students');
+    localStorage.removeItem('att_log');
+    // keep att_settings so user preferences survive
+    localStorage.setItem('enro_wiped_v1', '1');
+  }
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+  seedDemo();
+  loadSettings();
+  updateClassLabel();
+  renderDashboard();
+  renderTodayScan();
+  populateDateFilters();
+  updatePendingAlert();
+  refreshNewUID();
+});
+</script>
+</body>
+</html>
