@@ -1320,16 +1320,17 @@ html, body {
   </div>
 </div>
 
-<!-- ══ EDIT STUDENT MODAL ════════════════════════════════ -->
+<!-- ══ EDIT EMPLOYEE MODAL ════════════════════════════════ -->
 <div class="modal fade modal-dark" id="editModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="fas fa-user-pen me-2" style="color:var(--primary)"></i>I-edit ang Employee</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="cancelAssignNfc()"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="max-height:75vh;overflow-y:auto;">
         <input type="hidden" id="editIdx">
+
         <label class="form-label-dark">Pangalan</label>
         <input type="text" class="form-control-dark mb-3" id="editName">
         <label class="form-label-dark">Employee UID</label>
@@ -1347,25 +1348,55 @@ html, body {
           <option value="Seconded">Seconded</option>
         </select>
 
-        <!-- NFC UID -->
-        <label class="form-label-dark" style="display:flex;align-items:center;gap:6px;">
-          <i class="fas fa-wifi" style="color:var(--primary);font-size:11px;"></i>
-          NFC Card UID
-        </label>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" class="form-control-dark" id="editNfcUid" placeholder="Wala pang NFC card" style="font-family:var(--font-mono);font-size:13px;flex:1;">
-          <button type="button" id="assignNfcBtn" onclick="startAssignNfc()" style="
-            background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-            border:none;color:white;border-radius:10px;
-            padding:11px 14px;font-size:13px;font-weight:600;
-            cursor:pointer;white-space:nowrap;flex-shrink:0;
-            display:flex;align-items:center;gap:6px;
-            transition:all 0.2s;
-          ">
-            <i class="fas fa-wifi"></i> I-scan
-          </button>
+        <!-- NFC Card Section -->
+        <div style="background:rgba(108,99,255,0.06);border:1px solid var(--dark-border);border-radius:12px;padding:14px;margin-bottom:4px;">
+          <label class="form-label-dark" style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+            <i class="fas fa-wifi" style="color:var(--primary);font-size:11px;"></i>
+            NFC Card
+          </label>
+
+          <!-- Current card status -->
+          <div id="nfcCurrentCard" style="display:none;margin-bottom:10px;padding:10px 12px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.2);border-radius:10px;">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Active Card</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <span id="nfcCurrentUid" style="font-family:var(--font-mono);font-size:13px;color:var(--accent);font-weight:600;"></span>
+              <button type="button" onclick="deactivateNfc()" style="
+                background:rgba(255,71,87,0.12);border:1px solid rgba(255,71,87,0.3);
+                color:var(--danger);border-radius:8px;padding:5px 10px;
+                font-size:11px;font-weight:600;cursor:pointer;
+                display:flex;align-items:center;gap:5px;white-space:nowrap;
+                font-family:var(--font-main);transition:all 0.2s;
+              " onmouseover="this.style.background='rgba(255,71,87,0.22)'" onmouseout="this.style.background='rgba(255,71,87,0.12)'">
+                <i class="fas fa-ban"></i> Deactivate
+              </button>
+            </div>
+          </div>
+
+          <!-- Assign / replace field -->
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" class="form-control-dark" id="editNfcUid" placeholder="Wala pang NFC card" style="font-family:var(--font-mono);font-size:13px;flex:1;">
+            <button type="button" id="assignNfcBtn" onclick="startAssignNfc()" style="
+              background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+              border:none;color:white;border-radius:10px;
+              padding:11px 14px;font-size:13px;font-weight:600;
+              cursor:pointer;white-space:nowrap;flex-shrink:0;
+              display:flex;align-items:center;gap:6px;
+              transition:all 0.2s;font-family:var(--font-main);
+            ">
+              <i class="fas fa-wifi"></i> I-scan
+            </button>
+          </div>
+          <div id="nfcAssignStatus" style="font-size:12px;color:var(--text-muted);margin-top:6px;min-height:18px;"></div>
         </div>
-        <div id="nfcAssignStatus" style="font-size:12px;color:var(--text-muted);margin-top:6px;min-height:18px;"></div>
+
+        <!-- NFC Card History -->
+        <div id="nfcHistorySection" style="display:none;margin-top:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;">
+            <i class="fas fa-clock-rotate-left me-1" style="color:var(--primary-light);"></i> Card History
+          </div>
+          <div id="nfcHistoryList" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button class="btn-outline-custom" data-bs-dismiss="modal" onclick="cancelAssignNfc()">Kanselahin</button>
@@ -2156,28 +2187,132 @@ function openEdit(i) {
   document.getElementById('editSection').value = s.section || '';
   document.getElementById('editDepartment').value = s.department || '';
   document.getElementById('editEmpType').value = s.empType || 'Regular';
-  document.getElementById('editNfcUid').value = s.nfcUid || '';
+  document.getElementById('editNfcUid').value = '';
+
+  // NFC current card display
+  const currentCardEl = document.getElementById('nfcCurrentCard');
+  const currentUidEl = document.getElementById('nfcCurrentUid');
   const statusEl = document.getElementById('nfcAssignStatus');
-  statusEl.textContent = s.nfcUid ? '✅ May nakalink na NFC card' : '';
-  statusEl.style.color = s.nfcUid ? 'var(--success)' : 'var(--text-muted)';
+
+  if (s.nfcUid) {
+    currentCardEl.style.display = 'block';
+    currentUidEl.textContent = s.nfcUid;
+    statusEl.textContent = 'May active na card. Mag-scan ng bago para palitan.';
+    statusEl.style.color = 'var(--text-muted)';
+  } else {
+    currentCardEl.style.display = 'none';
+    statusEl.textContent = '';
+  }
+
+  // NFC history
+  renderNfcHistory(s);
+
   new bootstrap.Modal(document.getElementById('editModal')).show();
 }
+
+function renderNfcHistory(s) {
+  const section = document.getElementById('nfcHistorySection');
+  const list = document.getElementById('nfcHistoryList');
+  const history = s.nfcHistory || [];
+  if (!history.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = history.slice().reverse().map(h => {
+    const actionColor = h.action === 'deactivated' ? 'var(--danger)' : h.action === 'replaced' ? 'var(--warning)' : 'var(--success)';
+    const actionIcon = h.action === 'deactivated' ? 'fa-ban' : h.action === 'replaced' ? 'fa-arrow-right-arrow-left' : 'fa-link';
+    const actionLabel = h.action === 'deactivated' ? 'Deactivated' : h.action === 'replaced' ? 'Replaced' : 'Assigned';
+    return `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.03);border:1px solid var(--dark-border);border-radius:9px;">
+      <div style="width:28px;height:28px;border-radius:8px;background:rgba(108,99,255,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="fas ${actionIcon}" style="font-size:11px;color:${actionColor};"></i>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.uid}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">${h.date}</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${actionColor}22;color:${actionColor};border:1px solid ${actionColor}44;white-space:nowrap;">${actionLabel}</span>
+    </div>`;
+  }).join('');
+}
+
+function deactivateNfc() {
+  const i = +document.getElementById('editIdx').value;
+  const s = DB.employees[i];
+  if (!s.nfcUid) return;
+  showConfirm({
+    title: 'I-deactivate ang NFC Card?',
+    message: `Ang card na "${s.nfcUid}" ay hindi na gagana para kay ${s.name}.`,
+    detail: 'Pwedeng mag-assign ng bagong card anumang oras.',
+    icon: 'fa-ban',
+    type: 'warning',
+    okLabel: 'I-deactivate',
+    okIcon: 'fa-ban',
+    onConfirm: () => {
+      const employees = DB.employees;
+      const emp = employees[i];
+      // Log to history
+      if (!emp.nfcHistory) emp.nfcHistory = [];
+      emp.nfcHistory.push({ uid: emp.nfcUid, action: 'deactivated', date: new Date().toLocaleString('en-PH') });
+      delete emp.nfcUid;
+      DB.employees = employees;
+      // Refresh modal UI without closing
+      document.getElementById('nfcCurrentCard').style.display = 'none';
+      document.getElementById('editNfcUid').value = '';
+      document.getElementById('nfcAssignStatus').textContent = 'Card deactivated. Pwedeng mag-assign ng bago.';
+      document.getElementById('nfcAssignStatus').style.color = 'var(--warning)';
+      renderNfcHistory(emp);
+      renderEmployees();
+      toast(`NFC card ni ${emp.name} na-deactivate.`, 'warning');
+    }
+  });
+}
+
 function saveEdit() {
   const i = +document.getElementById('editIdx').value;
-  const s = DB.employees;
-  s[i].name = document.getElementById('editName').value.trim();
-  s[i].id = document.getElementById('editId').value.trim();
-  s[i].section = document.getElementById('editSection').value.trim();
-  s[i].department = document.getElementById('editDepartment').value.trim();
-  s[i].empType = document.getElementById('editEmpType').value;
+  const employees = DB.employees;
+  const emp = employees[i];
+  const oldNfc = emp.nfcUid || '';
   const newNfc = document.getElementById('editNfcUid').value.trim();
-  if (newNfc) s[i].nfcUid = newNfc;
-  else delete s[i].nfcUid;
-  DB.employees = s;
-  cancelAssignNfc();
-  renderEmployees();
-  bootstrap.Modal.getInstance(document.getElementById('editModal'))?.hide();
-  toast('Employee updated!', 'success');
+
+  const doSave = () => {
+    emp.name = document.getElementById('editName').value.trim();
+    emp.id = document.getElementById('editId').value.trim();
+    emp.section = document.getElementById('editSection').value.trim();
+    emp.department = document.getElementById('editDepartment').value.trim();
+    emp.empType = document.getElementById('editEmpType').value;
+
+    if (newNfc) {
+      if (!emp.nfcHistory) emp.nfcHistory = [];
+      if (oldNfc && oldNfc !== newNfc) {
+        emp.nfcHistory.push({ uid: oldNfc, action: 'replaced', date: new Date().toLocaleString('en-PH') });
+      } else if (!oldNfc) {
+        emp.nfcHistory.push({ uid: newNfc, action: 'assigned', date: new Date().toLocaleString('en-PH') });
+      }
+      emp.nfcUid = newNfc;
+    }
+    // if newNfc is empty and oldNfc exists, keep oldNfc (user didn't change it)
+
+    DB.employees = employees;
+    cancelAssignNfc();
+    renderEmployees();
+    bootstrap.Modal.getInstance(document.getElementById('editModal'))?.hide();
+    toast('Employee updated!', 'success');
+  };
+
+  // Confirm if replacing an existing NFC card with a different one
+  if (newNfc && oldNfc && newNfc !== oldNfc) {
+    showConfirm({
+      title: 'Palitan ang NFC Card?',
+      message: `Ang lumang card (${oldNfc}) ay ire-replace ng bagong card.`,
+      detail: 'Ang lumang UID ay mire-record sa card history.',
+      icon: 'fa-arrow-right-arrow-left',
+      type: 'warning',
+      okLabel: 'Palitan',
+      okIcon: 'fa-check',
+      onConfirm: doSave
+    });
+  } else {
+    doSave();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
