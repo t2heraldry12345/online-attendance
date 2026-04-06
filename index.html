@@ -467,8 +467,8 @@ html, body {
 .employee-card {
   background: var(--dark-card2);
   border: 1px solid var(--dark-border);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 14px 16px;
   display: flex; align-items: center; gap: 14px;
   margin-bottom: 10px;
   transition: all 0.25s cubic-bezier(.4,0,.2,1);
@@ -485,13 +485,73 @@ html, body {
 }
 .employee-card:hover { 
   border-color: rgba(108,99,255,0.45); 
-  background: rgba(108,99,255,0.07); 
-  transform: translateX(3px);
+  background: rgba(108,99,255,0.06); 
+  transform: translateX(2px);
 }
 .employee-card:hover::before { opacity: 1; }
 
+/* Avatar */
+.employee-card .emp-avatar {
+  width: 46px; height: 46px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700;
+  flex-shrink: 0; letter-spacing: -0.5px;
+}
+
+/* Info block */
 .employee-info { flex: 1; min-width: 0; }
-.employee-name { font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.employee-name {
+  font-size: 15px; font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.employee-meta-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 5px; flex-wrap: wrap;
+}
+.employee-uid-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--accent); font-weight: 600;
+  background: rgba(0,212,170,0.08);
+  border: 1px solid rgba(0,212,170,0.2);
+  border-radius: 20px; padding: 2px 9px;
+}
+.employee-position {
+  font-size: 11px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 3px;
+}
+
+/* Action buttons */
+.emp-actions {
+  display: flex; flex-direction: column; gap: 6px;
+  flex-shrink: 0; margin-left: 4px;
+}
+.emp-btn-edit {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: rgba(108,99,255,0.12);
+  border: 1px solid rgba(108,99,255,0.25);
+  color: var(--primary-light);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 13px;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.emp-btn-edit:hover { background: rgba(108,99,255,0.25); border-color: var(--primary); }
+.emp-btn-delete {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: rgba(255,71,87,0.1);
+  border: 1px solid rgba(255,71,87,0.2);
+  color: var(--danger);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 13px;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.emp-btn-delete:hover { background: rgba(255,71,87,0.22); border-color: var(--danger); }
+
 .employee-dept { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-top: 1px; text-transform: uppercase; letter-spacing: 0.6px; }
 .employee-id { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px; }
 
@@ -1846,22 +1906,25 @@ function renderEmployees() {
   el.innerHTML = employees.map((s) => {
     const realIdx = DB.employees.findIndex(x => x.id === s.id);
     const et = empTypeStyles[s.empType||'Regular'] || empTypeStyles['Casual'];
+    const nfcIcon = s.nfcUid ? `<i class="fas fa-wifi" style="font-size:9px;color:var(--accent);opacity:0.8;" title="May NFC card"></i>` : '';
+    const positionText = s.section ? `<div class="employee-position">${s.section}${s.department ? ' · ' + s.department : ''}</div>` : '';
     return `
     <div class="employee-card">
-      <div class="avatar ${avatarColor(s.name)}">${initials(s.name)}</div>
-      <div class="employee-info" style="min-width:0;">
-        <div class="employee-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
-          <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:${et.bg};color:${et.color};border:1px solid ${et.border};white-space:nowrap;">${s.empType||'Regular'}</span>
-          <span style="font-family:var(--font-mono);font-size:12px;color:var(--accent);font-weight:600;">${s.id}</span>
+      <div class="emp-avatar ${avatarColor(s.name)}">${initials(s.name)}</div>
+      <div class="employee-info">
+        <div class="employee-name">${s.name}</div>
+        ${positionText}
+        <div class="employee-meta-row">
+          <span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:${et.bg};color:${et.color};border:1px solid ${et.border};white-space:nowrap;">${s.empType||'Regular'}</span>
+          <span class="employee-uid-chip">${nfcIcon}${s.id}</span>
         </div>
       </div>
-      <div style="display:flex;gap:8px;flex-shrink:0;margin-left:8px;">
-        <button class="btn-outline-custom" onclick="openEdit(${realIdx})" style="padding:8px 12px;" title="I-edit">
-          <i class="fas fa-pen" style="font-size:13px;"></i>
+      <div class="emp-actions">
+        <button class="emp-btn-edit" onclick="openEdit(${realIdx})" title="I-edit">
+          <i class="fas fa-pen"></i>
         </button>
-        <button class="btn-danger-custom" onclick="removeEmployee(${realIdx})" style="padding:8px 12px;" title="Burahin">
-          <i class="fas fa-trash" style="font-size:13px;"></i>
+        <button class="emp-btn-delete" onclick="removeEmployee(${realIdx})" title="Burahin">
+          <i class="fas fa-trash"></i>
         </button>
       </div>
     </div>`;
